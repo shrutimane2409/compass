@@ -1,0 +1,5 @@
+country,code,description,amount_eur,source_url,verified_at,is_estimate
+IE,irp,Irish Residence Permit registration,300,https://www.ucd.ie/global/study-at-ucd/scholarshipsfinances/livingcosts/,2026-11-19,false
+IE,health_insurance,Private health insurance (per year),690,https://www.ucd.ie/global/study-at-ucd/scholarshipsfinances/livingcosts/,2026-11-19,false
+IE,rent_deposit,Accommodation deposit,750,https://www.ucd.ie/global/study-at-ucd/scholarshipsfinances/livingcosts/,2026-11-19,false
+IE,setup,Bedding and cooking utensils,200,https://www.ucd.ie/global/study-at-ucd/scholarshipsfinances/livingcosts/,2026-11-19,false

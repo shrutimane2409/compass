@@ -1,0 +1,24 @@
+@host = http://localhost:5080
+
+GET {{host}}/health/ready
+
+###
+POST {{host}}/api/recommendations
+Content-Type: application/json
+
+{
+  "profile": {
+    "gradePercent": 78,
+    "background": "computer-science",
+    "english": { "test": "Ielts", "score": 7.0 },
+    "workYears": 2,
+    "budgetEur": 40000,
+    "interests": ["machine learning", "cloud"]
+  }
+}
+
+###
+POST {{host}}/api/chat
+Content-Type: application/json
+
+{ "message": "Which courses fit me best?" }

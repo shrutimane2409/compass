@@ -1,0 +1,27 @@
+# Official pages for retrieval, one URL per line.
+# Course pages first, then cost-of-living pages.
+# Optional: '<url> | snapshots/<file>.html' = saved copy used when the site blocks the fetcher.
+https://hub.ucd.ie/usis/!W_HU_MENU.P_PUBLISH?p_tag=COURSE&MAJR=T150
+https://hub.ucd.ie/usis/!W_HU_MENU.P_PUBLISH?p_tag=PROG&MAJR=T195
+https://hub.ucd.ie/usis/!W_HU_MENU.P_PUBLISH?p_tag=COURSE&MAJR=T413
+https://hub.ucd.ie/usis/!W_HU_MENU.P_PUBLISH?p_tag=COURSE&MAJR=T306
+https://hub.ucd.ie/usis/!W_HU_MENU.P_PUBLISH?p_tag=COURSE&MAJR=W267
+https://www.ucc.ie/en/ckr40/
+https://www.ucc.ie/en/ckr49/
+https://www.ucc.ie/en/mscai/
+https://www.ucc.ie/en/msccyb/
+https://www.ucc.ie/en/ckl51/
+https://www.ucc.ie/en/ckl18/
+https://www.dcu.ie/courses/postgraduate/school-computing/msc-computing
+https://www.dcu.ie/courses/postgraduate/school-electronic-engineering/msc-electronic-computer-technology
+https://www.tcd.ie/courses/postgraduate/fees/
+https://www.universityofgalway.ie/courses/taught-postgraduate-courses/computer-science-artificial-intelligence.html
+https://www.universityofgalway.ie/courses/taught-postgraduate-courses/msc-in-computer-science-data-analytics.html
+https://www.ul.ie/gps/artificial-intelligence-machine-learning-msc
+https://www.ul.ie/gps/course/software-engineering-msc
+https://www.tudublin.ie/study/postgraduate/courses/computing-data-science/
+https://www.tudublin.ie/study/postgraduate/courses/data-analytics-ft/
+https://www.tudublin.ie/study/postgraduate/courses/human-centered-artificial-intelligence-tu471-full-time/
+https://www.ucd.ie/global/study-at-ucd/scholarshipsfinances/livingcosts/ | snapshots/ucd-livingcosts.html
+https://www.ucc.ie/en/international/studentinfohub/beforeyouarrive/costofliving/
+https://www.maynoothuniversity.ie/international/money-and-budgeting

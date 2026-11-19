@@ -1,0 +1,9 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/Compass.Domain/Compass.Domain.csproj" />
+    <Project Path="src/Compass.Api/Compass.Api.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Compass.Domain.Tests/Compass.Domain.Tests.csproj" />
+  </Folder>
+</Solution>

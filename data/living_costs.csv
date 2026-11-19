@@ -1,0 +1,16 @@
+city,category,monthly_eur,source_url,verified_at,is_estimate
+Dublin,rent,1200,https://www.ucd.ie/global/study-at-ucd/scholarshipsfinances/livingcosts/,2026-11-19,false
+Dublin,utilities,135,https://www.ucd.ie/global/study-at-ucd/scholarshipsfinances/livingcosts/,2026-11-19,false
+Dublin,food,490,https://www.ucd.ie/global/study-at-ucd/scholarshipsfinances/livingcosts/,2026-11-19,false
+Dublin,transport,75,https://www.ucd.ie/global/study-at-ucd/scholarshipsfinances/livingcosts/,2026-11-19,false
+Cork,rent,800,https://www.ucc.ie/en/international/studentinfohub/beforeyouarrive/costofliving/,2026-11-19,true
+Cork,utilities,120,https://www.ucc.ie/en/international/studentinfohub/beforeyouarrive/costofliving/,2026-11-19,false
+Cork,food,180,https://www.ucc.ie/en/international/studentinfohub/beforeyouarrive/costofliving/,2026-11-19,true
+Cork,transport,28,https://www.ucc.ie/en/international/studentinfohub/beforeyouarrive/costofliving/,2026-11-19,true
+Galway,all,1200,https://www.universityofgalway.ie/shannoncollege/courses/study-abroad/admissionrequirements/,2026-11-19,false
+Limerick,rent,800,https://www.ul.ie/media/52280/download?inline=,2026-11-19,true
+Limerick,utilities,125,https://www.ul.ie/media/52280/download?inline=,2026-11-19,true
+Limerick,food,300,https://www.ul.ie/media/52280/download?inline=,2026-11-19,true
+Limerick,transport,45,https://www.ul.ie/media/52280/download?inline=,2026-11-19,false
+Maynooth,rent,850,https://www.maynoothuniversity.ie/international/money-and-budgeting,2026-11-19,true
+Maynooth,food,362.5,https://www.maynoothuniversity.ie/international/money-and-budgeting,2026-11-19,true
