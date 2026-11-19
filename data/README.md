@@ -18,11 +18,54 @@
 - Leave a column empty when the page does not state it. Never guess.
 
 `accepted_backgrounds` uses `|` as a separator, e.g. `computer-science|information-technology`.
+Values are the background codes the web form offers (`web/src/components/ProfileForm.tsx`).
+
+## Entry requirements (checked 2026-11-19)
+
+Each row records the **standard entry route** on the course page: degree class and named disciplines.
+`entry_source_url` is set when that text is not on `source_url` (TCD, UL, Maynooth).
+
+**Backgrounds.** Disciplines the page names are mapped to background codes. "Any discipline" means all nine codes.
+Conversion courses list every code except the one they exclude (UCD Conversion excludes Computer Science;
+UCC ISBP excludes CS and IT). `backgrounds_open = true` when the page also accepts "related", "cognate" or
+"such as" disciplines. The rules engine then reports an unnamed background as borderline ("Reach": not named,
+check with the university) instead of "not eligible". Maynooth Data Science sets its bar in maths modules, not degree
+disciplines, so its backgrounds are blank.
+
+**Minimum grade.** Course pages give an Irish degree class (2.2 / 2.1 / 1st). `min_grade_percent` is that class
+converted with the university's own India table, recorded in `grade_source_url`:
+
+| University | India conversion (bachelor's %) | Used |
+|---|---|---|
+| UCC | 2H2 55 · 2H1 65 · 1H 75 | as stated |
+| Galway | 2:2 55 · 2:1 65 · 1st 75 (top-100 NIRF: 52 · 62 · 70) | top-100 NIRF figure (lowest), `is_estimate` |
+| TU Dublin | 2.2 50/55 · 2.1 65/70 (Tier 1 / Tier 2, tiers not defined on the page) | Tier 1 (lowest), `is_estimate` |
+| UL | "55-70% depending on the programme" | 55 (lower bound), `is_estimate` |
+| TCD Business School | "India: CGPA 6.8/10" | 6.8 × 9.5 = 64.6 (the app's CGPA factor), `is_estimate` |
+| UCD, DCU, TCD Computer Science, Maynooth | no India conversion published | blank |
+
+Where a university gives more than one figure, the lowest one is used. Overstating a minimum would wrongly mark
+eligible students as ineligible, which is the worse error for a shortlist. The borderline margin (3%) still applies.
+
+`min_work_years` is 0 everywhere: no standard route requires work experience.
 
 ## Known gaps (next curation pass)
 
-- Entry requirements (minimum grade for Indian degrees, IELTS/PTE/TOEFL, accepted backgrounds) are mostly blank.
-  The rules engine reports these as "not stated" rather than guessing.
+- Grade minimums are blank for UCD (5), DCU (2), TCD Computer Science and Maynooth (2). None of them publishes an
+  India conversion (UCD's India page covers undergraduate entry only). The rules engine reports "not stated".
+  Maynooth Data Science asks for "2H1 with an overall score of 65%", but that is on the Irish scale, not an Indian
+  conversion.
+- Alternative routes are not modelled: 2.2 + work experience (UCD Advanced AI, TU Dublin Data Science and Data
+  Analytics), work experience instead of the grade (UCD Negotiated Learning: 3 years), RPL routes (UCC, Maynooth),
+  and Galway's "good Second Class Honours on the Programme Director's recommendation".
+- Module-level requirements are not modelled: ML and programming modules (UCD Advanced AI), ≥50% CS credits (UCC
+  Computing Science, Cybersecurity), 30 ECTS quantitative content (UCC AI for Business), maths modules at 60%
+  (Maynooth Data Science), mandatory CS modules (Maynooth CS Applied).
+- UCC ISBP also excludes applicants with more than 2 years of software-development work. The engine only models
+  a minimum.
+- TCD's "MSc Business Analytics" has been renamed "MSc in Business Analytics and AI for Management" (2026 intake).
+  The row keeps the old title until its fee and duration are re-checked.
+- `application_deadline` is still blank for 23 courses.
 - English minimums (`min_ielts`, `min_pte`, `min_toefl`, overall scores) are filled for all 24 courses (checked 2026-11-19).
   Galway states all three on its course pages. Elsewhere the course page defers to a university-wide page,
   recorded in `english_source_url`: UCD Registry, UCC, DCU (Faculty of Engineering & Computing), UL, Maynooth,

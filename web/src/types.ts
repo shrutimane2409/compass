@@ -22,6 +22,8 @@ export interface Course {
   isEstimate: boolean;
   feeAcademicYear: string | null;
   englishSourceUrl: string | null;
+  entrySourceUrl: string | null;
+  gradeSourceUrl: string | null;
 }
 
 export interface Check {

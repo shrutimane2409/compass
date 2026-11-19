@@ -33,4 +33,7 @@ public sealed record Course(
     bool IsEstimate,
     string? FeeAcademicYear = null,
     string? EnglishSourceUrl = null,
-    decimal? MinToeflNew = null);
+    decimal? MinToeflNew = null,
+    bool BackgroundsOpen = false,
+    string? EntrySourceUrl = null,
+    string? GradeSourceUrl = null);

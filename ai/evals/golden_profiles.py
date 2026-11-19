@@ -15,7 +15,13 @@ PROFILES = {
     "it_data_focus": {"gradePercent": 74, "background": "information-technology",
                       "english": {"test": "Pte", "score": 65}, "workYears": 1,
                       "budgetEur": 38000, "interests": ["data science", "cloud"]},
+    "arts_low_grade": {"gradePercent": 52, "background": "arts",
+                       "english": {"test": "Ielts", "score": 6.5}, "workYears": 0,
+                       "budgetEur": 45000, "interests": ["AI", "data science"]},
 }
+
+# Profiles whose shortlist must contain at least one course they do not qualify for.
+EXPECT_INELIGIBLE = {"arts_low_grade"}
 
 
 def recommend(client: httpx.Client, profile: dict) -> dict:
@@ -34,8 +40,14 @@ def check(name: str, client: httpx.Client) -> list[str]:
     if any(s != "NotEligible" for s in statuses[first_ineligible:]):
         failures.append("an ineligible course is ranked above an eligible one")
 
+    if name in EXPECT_INELIGIBLE and "NotEligible" not in statuses:
+        failures.append("expected at least one ineligible course")
+
     for i in items:
         c, cost = i["course"], i["cost"]
+        bg = next((ch for ch in i["eligibility"]["checks"] if ch["name"] == "Background"), None)
+        if c.get("backgroundsOpen") and bg and bg["passed"] is False:
+            failures.append(f"{c['title']}: rejected on background although the page accepts related disciplines")
         if not c["sourceUrl"].startswith("https://"):
             failures.append(f"{c['title']}: missing official source")
         if abs(cost["tuition"] + cost["living"] + cost["oneOff"] - cost["total"]) > 0.01:

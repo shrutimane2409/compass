@@ -14,7 +14,8 @@ public sealed class CourseRepository(NpgsqlDataSource db)
             SELECT c.id, u.name AS university, u.city, c.title, c.field, c.duration_months,
                    c.fee_non_eu_eur, c.min_grade_percent, c.accepted_backgrounds,
                    c.min_ielts, c.min_pte, c.min_toefl, c.min_toefl_new, c.min_work_years,
-                   c.source_url, c.verified_at, c.is_estimate, c.fee_academic_year, c.english_source_url
+                   c.source_url, c.verified_at, c.is_estimate, c.fee_academic_year, c.english_source_url,
+                   c.backgrounds_open, c.entry_source_url, c.grade_source_url
             FROM courses c
             JOIN universities u ON u.id = c.university_id
             ORDER BY u.name, c.title
@@ -60,10 +61,14 @@ public sealed class CourseRepository(NpgsqlDataSource db)
         public bool IsEstimate { get; set; }
         public string? FeeAcademicYear { get; set; }
         public string? EnglishSourceUrl { get; set; }
+        public bool BackgroundsOpen { get; set; }
+        public string? EntrySourceUrl { get; set; }
+        public string? GradeSourceUrl { get; set; }
 
         public Course ToDomain() => new(
             Id, University, City, Title, Field, DurationMonths, FeeNonEuEur, MinGradePercent,
             AcceptedBackgrounds, MinIelts, MinPte, MinToefl, MinWorkYears,
-            SourceUrl, DateOnly.FromDateTime(VerifiedAt), IsEstimate, FeeAcademicYear, EnglishSourceUrl, MinToeflNew);
+            SourceUrl, DateOnly.FromDateTime(VerifiedAt), IsEstimate, FeeAcademicYear, EnglishSourceUrl, MinToeflNew,
+            BackgroundsOpen, EntrySourceUrl, GradeSourceUrl);
     }
 }

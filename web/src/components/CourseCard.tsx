@@ -62,6 +62,12 @@ export function CourseCard({ rec, rank, inrPerEur, compared, onToggleCompare, co
         {c.englishSourceUrl && (
           <a href={c.englishSourceUrl} target="_blank" rel="noreferrer">English requirement ↗</a>
         )}
+        {c.entrySourceUrl && (
+          <a href={c.entrySourceUrl} target="_blank" rel="noreferrer">Entry requirements ↗</a>
+        )}
+        {c.gradeSourceUrl && (
+          <a href={c.gradeSourceUrl} target="_blank" rel="noreferrer">India grade conversion ↗</a>
+        )}
         <span>Verified {verified}</span>
       </footer>
     </article>

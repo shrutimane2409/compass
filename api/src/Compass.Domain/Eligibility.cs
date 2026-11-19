@@ -38,6 +38,13 @@ public sealed class EligibilityEvaluator
             checks.Add(new("Background", null, "Accepted degree backgrounds not stated."));
         else if (c.AcceptedBackgrounds.Contains(s.Background, StringComparer.OrdinalIgnoreCase))
             checks.Add(new("Background", true, $"A {s.Background} degree is accepted."));
+        else if (c.BackgroundsOpen)
+        {
+            // The page accepts "related" disciplines without listing them: possible, not certain.
+            borderline = true;
+            checks.Add(new("Background", null,
+                $"A {s.Background} degree is not named on the course page, which also accepts related disciplines. Check with the university."));
+        }
         else
             checks.Add(new("Background", false, $"A {s.Background} degree is not in the accepted list."));
 

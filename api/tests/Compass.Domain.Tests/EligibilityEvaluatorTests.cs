@@ -38,6 +38,21 @@ public class EligibilityEvaluatorTests
     }
 
     [Fact]
+    public void Unnamed_background_is_borderline_when_page_accepts_related_disciplines()
+    {
+        var r = _sut.Evaluate(Student(background: "electronics"), Course(backgroundsOpen: true));
+        Assert.Equal(EligibilityStatus.Borderline, r.Status);
+        Assert.Contains(r.Checks, c => c.Name == "Background" && c.Passed == null);
+    }
+
+    [Fact]
+    public void Named_background_still_passes_when_page_accepts_related_disciplines()
+    {
+        var r = _sut.Evaluate(Student(), Course(backgroundsOpen: true));
+        Assert.Contains(r.Checks, c => c.Name == "Background" && c.Passed == true);
+    }
+
+    [Fact]
     public void Background_match_ignores_case()
     {
         var r = _sut.Evaluate(Student(background: "Computer-Science"), Course());
