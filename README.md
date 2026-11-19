@@ -16,7 +16,8 @@ from a student's profile, budget and goals, and explains every recommendation wi
 
 The AI can reorder courses. It can never change whether a student is eligible or what a course costs.
 
-See [docs/system-design.md](docs/system-design.md) for architecture, latency budgets and trade-offs.
+See [docs/system-design.md](docs/system-design.md) for architecture, latency budgets and trade-offs,
+and [docs/deployment.md](docs/deployment.md) for the free-tier deployment.
 
 ## Structure
 

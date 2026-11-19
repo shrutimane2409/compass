@@ -1,6 +1,9 @@
 import { createSseParser } from "./sse";
 import type { ChatTurn, RecommendationResponse, StudentProfile } from "./types";
 
+// Empty in development (Vite proxies /api). Set VITE_API_BASE when the API is on another host.
+const API_BASE = (import.meta.env.VITE_API_BASE ?? "").replace(/\/$/, "");
+
 export class ApiError extends Error {
   constructor(message: string, public status: number) {
     super(message);
@@ -18,7 +21,7 @@ async function problemMessage(res: Response): Promise<string> {
 }
 
 export async function getRecommendations(profile: StudentProfile, signal?: AbortSignal): Promise<RecommendationResponse> {
-  const res = await fetch("/api/recommendations", {
+  const res = await fetch(`${API_BASE}/api/recommendations`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ profile }),
@@ -42,7 +45,7 @@ export async function streamChat(
 ): Promise<void> {
   let res: Response;
   try {
-    res = await fetch("/api/chat", {
+    res = await fetch(`${API_BASE}/api/chat`, {
       method: "POST",
       headers: { "Content-Type": "application/json", Accept: "text/event-stream" },
       body: JSON.stringify({ message, history: history.slice(-12), profile }),

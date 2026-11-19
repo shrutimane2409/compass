@@ -18,6 +18,12 @@ var connectionString = config.GetConnectionString("Compass")
 var aiBaseUrl = new Uri(config["AiService:BaseUrl"]
     ?? throw new InvalidOperationException("AiService:BaseUrl is missing."));
 var origins = config.GetSection("Cors:Origins").Get<string[]>() ?? [];
+var aiInternalKey = config["AiService:InternalKey"];
+void ConfigureAi(HttpClient c)
+{
+    c.BaseAddress = aiBaseUrl;
+    if (!string.IsNullOrEmpty(aiInternalKey)) c.DefaultRequestHeaders.Add("X-Internal-Key", aiInternalKey);
+}
 
 // Data
 builder.Services.AddSingleton(NpgsqlDataSource.Create(connectionString));
@@ -32,7 +38,7 @@ builder.Services.AddSingleton<CostCalculator>();
 builder.Services.AddSingleton<RecommendationEngine>();
 
 // AI service: short, resilient calls for scoring; a separate long-lived client for streaming
-builder.Services.AddHttpClient<AiServiceClient>(c => c.BaseAddress = aiBaseUrl)
+builder.Services.AddHttpClient<AiServiceClient>(ConfigureAi)
     .AddStandardResilienceHandler(o =>
     {
         o.AttemptTimeout.Timeout = TimeSpan.FromSeconds(3);
@@ -41,7 +47,7 @@ builder.Services.AddHttpClient<AiServiceClient>(c => c.BaseAddress = aiBaseUrl)
     });
 builder.Services.AddHttpClient(ChatEndpoints.StreamClient, c =>
 {
-    c.BaseAddress = aiBaseUrl;
+    ConfigureAi(c);
     c.Timeout = TimeSpan.FromMinutes(2);
 });
 builder.Services.AddScoped<FitScoreService>();

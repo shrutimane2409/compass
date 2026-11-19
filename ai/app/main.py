@@ -7,12 +7,15 @@ It never decides eligibility or cost; the Compass API does that with determinist
 import logging
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI
+import hmac
+
+from fastapi import Depends, FastAPI, Header, HTTPException
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 
 from . import retrieval
 from .agent import ChatRequest, stream_chat
+from .config import get_settings
 from .embeddings import warm_up
 from .fit import FitRequest, FitResponse, score_courses
 
@@ -32,12 +35,22 @@ async def lifespan(_: FastAPI):
 app = FastAPI(title="Compass AI", version="0.2.0", lifespan=lifespan)
 
 
+def require_internal_key(x_internal_key: str | None = Header(default=None)) -> None:
+    """The AI service is public on some hosts; only the Compass API (which rate-limits users) may call it."""
+    expected = get_settings().internal_api_key
+    if expected and not hmac.compare_digest(x_internal_key or "", expected):
+        raise HTTPException(status_code=401, detail="Unauthorized")
+
+
+protected = [Depends(require_internal_key)]
+
+
 @app.get("/health")
 def health() -> dict[str, str]:
     return {"status": "ok"}
 
 
-@app.post("/fit", response_model=FitResponse)
+@app.post("/fit", response_model=FitResponse, dependencies=protected)
 def fit(req: FitRequest) -> FitResponse:
     return score_courses(req)
 
@@ -47,13 +60,13 @@ class SearchRequest(BaseModel):
     site: str | None = None
 
 
-@app.post("/search")
+@app.post("/search", dependencies=protected)
 def search(req: SearchRequest) -> list[retrieval.Chunk]:
     """Retrieval only. Used by the evaluation suite and for debugging."""
     return retrieval.search(req.query, url_contains=req.site)
 
 
-@app.post("/chat")
+@app.post("/chat", dependencies=protected)
 async def chat(req: ChatRequest) -> StreamingResponse:
     return StreamingResponse(
         stream_chat(req),

@@ -8,6 +8,8 @@ class Settings(BaseSettings):
 
     database_url: str = "postgresql://compass:compass_dev@localhost:5433/compass"
     compass_api_url: str = "http://localhost:5080"
+    # When set, every endpoint except /health requires this value in the X-Internal-Key header.
+    internal_api_key: str = ""
 
     # Free-tier LLM providers. Groq is primary (fast); Gemini is the fallback.
     groq_api_key: str = ""

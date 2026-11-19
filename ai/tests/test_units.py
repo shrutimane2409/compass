@@ -126,3 +126,31 @@ def test_fetch_falls_back_to_snapshot_when_blocked(tmp_path):
         assert False, "expected HTTPStatusError"
     except httpx.HTTPStatusError:
         pass
+
+
+class TestInternalKey:
+    def _client(self, key: str):
+        from fastapi.testclient import TestClient
+        from app.config import get_settings
+        from app.main import app
+        get_settings.cache_clear()
+        import os
+        os.environ["INTERNAL_API_KEY"] = key
+        return TestClient(app)
+
+    def teardown_method(self):
+        import os
+        from app.config import get_settings
+        os.environ.pop("INTERNAL_API_KEY", None)
+        get_settings.cache_clear()
+
+    def test_rejects_missing_key_when_configured(self):
+        client = self._client("s3cret")
+        assert client.post("/search", json={"query": "fees"}).status_code == 401
+
+    def test_rejects_wrong_key(self):
+        client = self._client("s3cret")
+        assert client.post("/search", json={"query": "fees"}, headers={"X-Internal-Key": "nope"}).status_code == 401
+
+    def test_health_stays_open(self):
+        assert self._client("s3cret").get("/health").status_code == 200
