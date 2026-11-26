@@ -13,9 +13,9 @@ class Settings(BaseSettings):
 
     # Free-tier LLM providers. Groq is primary (fast); Gemini is the fallback.
     groq_api_key: str = ""
-    groq_model: str = "llama-3.3-70b-versatile"
+    groq_model: str = "openai/gpt-oss-120b"
     gemini_api_key: str = ""
-    gemini_model: str = "gemini-2.5-flash"
+    gemini_model: str = "gemini-3.1-flash-lite"
     llm_timeout_seconds: float = 20.0
 
     embedding_model: str = "models/gemini-embedding-001"  # requested at 768 dimensions
