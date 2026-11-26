@@ -103,6 +103,13 @@ def describe(ex: httpx.HTTPError) -> str:
     return type(ex).__name__
 
 
+def prune(listed_urls: list[str]) -> int:
+    """Delete stored chunks for pages that are no longer in the sources file."""
+    with get_pool().connection() as conn:
+        cur = conn.execute("DELETE FROM documents WHERE NOT (source_url = ANY(%s))", (listed_urls,))
+        return cur.rowcount
+
+
 def main(path: str) -> None:
     sources = parse_sources(Path(path))
     changed, failed, snapshotted = [], [], []
@@ -133,6 +140,9 @@ def main(path: str) -> None:
         print("\nRe-verify courses sourced from these pages:")
         print("\n".join(changed))
     print(f"\n{len(sources) - len(failed)}/{len(sources)} pages ingested")
+    removed = prune([url for url, _ in sources])
+    if removed:
+        print(f"Removed {removed} chunks from pages no longer listed in {Path(path).name}")
     if failed:
         sys.exit(1)
 
