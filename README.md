@@ -38,7 +38,7 @@ and [docs/deployment.md](docs/deployment.md) for the free-tier deployment.
 
     cd ai && python3 -m venv .venv && source .venv/bin/activate
     pip install -r requirements-dev.txt && pytest
-    cp .env.example .env                 # add free GROQ_API_KEY / GEMINI_API_KEY
+    cp .env.example .env                 # add free GEMINI_API_KEY (embeddings) and GROQ_API_KEY
     uvicorn app.main:app --reload --port 8000
 
     python -m scripts.load_courses ../data/courses.csv
@@ -63,7 +63,7 @@ and [docs/deployment.md](docs/deployment.md) for the free-tier deployment.
 1. ✅ Schema, rules engine (eligibility, cost, affordability, freshness), tests, API
 1b. ✅ API hardening: catalog cache, fit-score cache, rate limiting, resilience, SSE chat proxy, health checks, tracing
 2. ✅ 24 verified courses across 8 universities + living and one-off costs (entry requirements: next pass)
-3. ✅ Local embeddings + pgvector course-fit scoring (`/fit`)
+3. ✅ Gemini embeddings + pgvector course-fit scoring (`/fit`)
 4. ✅ Retrieval over official pages + ingestion job (`/search`, `scripts/ingest.py`)
 5. ✅ LangGraph counsellor agent with Groq → Gemini fallback, streamed (`/chat`)
 6. ✅ React UI: profile, ranked shortlist with reasons and sources, cost breakdown (EUR + INR), what-if budget slider, compare (up to 3), streaming chat

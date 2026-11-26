@@ -8,6 +8,7 @@ import sys
 from pathlib import Path
 
 from app import retrieval
+from app.embeddings import EmbeddingQuotaExhausted
 
 THRESHOLD = 0.8
 
@@ -23,7 +24,10 @@ def main(k: int = 6) -> None:
     cases = [json.loads(l) for l in Path(__file__).with_name("rag_cases.jsonl").read_text().splitlines() if l.strip()]
     hits, rr = 0, 0.0
     for c in cases:
-        urls = [ch.source_url for ch in retrieval.search(c["question"], k=k)]
+        try:
+            urls = [ch.source_url for ch in retrieval.search(c["question"], k=k)]
+        except EmbeddingQuotaExhausted as ex:
+            sys.exit(f"\nStopped: {ex}")
         r = rank_of(c["expect_url"], urls)
         hits += r is not None
         rr += 1 / r if r else 0

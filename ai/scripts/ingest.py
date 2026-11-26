@@ -1,8 +1,11 @@
 """Fetch official pages, chunk, embed and store them for retrieval.
 
 Usage (from ai/):  python -m scripts.ingest ../data/sources.txt
-Unchanged pages (same hash) are skipped. Changed pages are re-chunked and reported,
-so the matching course rows can be re-verified by a human.
+Unchanged pages are skipped. The hash ignores whitespace and line order, because some pages
+(UCD's "Other Courses of Interest" box) shuffle the same lines on every load. A page whose
+hash differs but whose chunks match the stored ones only gets its hash updated, so nothing is
+re-embedded for an invisible change. Changed pages are re-chunked and reported, so the
+matching course rows can be re-verified by a human.
 
 A line may name a saved copy of the page:   <url> | snapshots/<file>.html
 (path relative to the sources file). Some official sites block automated clients; the
@@ -10,6 +13,7 @@ snapshot is used only when the live fetch fails, and citations still point to <u
 Exits non-zero if any page could not be ingested from either source.
 """
 import hashlib
+import re
 import sys
 from pathlib import Path
 
@@ -18,7 +22,7 @@ from bs4 import BeautifulSoup
 
 from app.chunking import chunk_text
 from app.db import get_pool
-from app.embeddings import embed_passages
+from app.embeddings import EmbeddingQuotaExhausted, embed_passages
 
 USER_AGENT = "CompassBot/0.1 (student project; course research)"
 
@@ -30,6 +34,12 @@ def page_text(html: str) -> tuple[str, str]:
     title = (soup.title.string or "").strip() if soup.title else ""
     main = soup.find("main") or soup.body or soup
     return title, main.get_text("\n")
+
+
+def content_hash(text: str) -> str:
+    """Hash of the page's distinct lines, whitespace-normalised and sorted: stable when only order or spacing changes."""
+    lines = {re.sub(r"\s+", " ", line).strip() for line in text.splitlines()}
+    return hashlib.sha256("\n".join(sorted(lines - {""})).encode()).hexdigest()
 
 
 def parse_sources(path: Path) -> list[tuple[str, Path | None]]:
@@ -59,7 +69,7 @@ def fetch(url: str, snapshot: Path | None, client: httpx.Client) -> tuple[str, b
 def ingest(url: str, client: httpx.Client, snapshot: Path | None = None) -> str:
     html, from_snapshot = fetch(url, snapshot, client)
     title, text = page_text(html)
-    page_hash = hashlib.sha256(text.encode()).hexdigest()
+    page_hash = content_hash(text)
 
     mark = "*" if from_snapshot else ""
 
@@ -69,6 +79,13 @@ def ingest(url: str, client: httpx.Client, snapshot: Path | None = None) -> str:
             return "unchanged" + mark
 
         chunks = chunk_text(text)
+        if row:
+            stored = [r[0] for r in conn.execute(
+                "SELECT content FROM documents WHERE source_url = %s ORDER BY chunk_index", (url,)).fetchall()]
+            if stored == chunks:  # same text to embed: just record the new hash
+                conn.execute("UPDATE documents SET page_hash = %s WHERE source_url = %s", (page_hash, url))
+                return "unchanged" + mark
+
         vectors = embed_passages(chunks) if chunks else []
         with conn.transaction():
             conn.execute("DELETE FROM documents WHERE source_url = %s", (url,))
@@ -93,6 +110,12 @@ def main(path: str) -> None:
         for url, snapshot in sources:
             try:
                 status = ingest(url, client, snapshot)
+            except EmbeddingQuotaExhausted as ex:
+                done = sources.index((url, snapshot))
+                print(f"\nStopped at {url}: {ex}")
+                print(f"{done - len(failed)}/{len(sources)} pages processed this run before the stop. "
+                      "Pages already stored are kept; re-run later and unchanged pages are skipped.")
+                sys.exit(1)
             except httpx.HTTPError as ex:
                 hint = "" if snapshot else "; save the page and add '| snapshots/<file>.html'"
                 print(f"{'failed':10} {url} ({describe(ex)}{hint})")

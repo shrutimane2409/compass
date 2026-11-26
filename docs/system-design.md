@@ -45,7 +45,7 @@ The AI can reorder courses through the fit score. It can never change eligibilit
         └──┬───────────────┬──┘
            │ SQL           │ HTTP (resilient) + SSE proxy
            │        ┌──────▼──────────────┐
-           │        │ Compass AI (Python) │  local embeddings · RAG · LangGraph agent
+           │        │ Compass AI (Python) │  embeddings · RAG · LangGraph agent
            │        └──┬───────────┬──────┘
            │           │           │  agent tools call the API's rules endpoints (read only)
      ┌─────▼───────────▼─┐   ┌─────▼─────────────┐
@@ -59,7 +59,7 @@ The AI can reorder courses through the fit score. It can never change eligibilit
 - **Web**: React + TypeScript. Calls only the Compass API.
 - **Compass API**: ASP.NET Core minimal APIs. Owns the rules engine, the catalog cache, rate limiting and the public contract. Proxies chat streams to the AI service so there is one origin, one rate limiter and one place for validation.
 - **Compass AI**: FastAPI. Owns embeddings, retrieval and the agent. Stateless.
-- **PostgreSQL + pgvector**: structured facts in tables; course descriptions and document chunks carry 384-dimension embeddings with HNSW indexes.
+- **PostgreSQL + pgvector**: structured facts in tables; course descriptions and document chunks carry 768-dimension embeddings (Gemini) with HNSW indexes.
 - **Ingestion job**: scheduled CI job. Never auto-updates fees or requirements; it flags them for a human to verify.
 
 ## 4. Key request paths
@@ -67,7 +67,7 @@ The AI can reorder courses through the fit score. It can never change eligibilit
 ### 4.1 Shortlist and what-if (hot path, no LLM)
 1. `POST /api/recommendations` with the profile.
 2. Catalog (courses, city costs, one-off costs) comes from an in-memory cache (TTL 10 min, invalidated on data load). About 80 rows, so no database round trip.
-3. Fit scores: looked up in the cache by a hash of the student's interests; on a miss, one call to `AI /fit` (local embedding + pgvector search). If the AI service fails, the API falls back to a neutral score and returns `fitAvailable: false`.
+3. Fit scores: looked up in the cache by a hash of the student's interests; on a miss, one call to `AI /fit` (one embedding + pgvector search). If the AI service fails, the API falls back to a neutral score and returns `fitAvailable: false`.
 4. Rules engine evaluates every course in memory (about 10 ms).
 
 A what-if change (budget, grade) reuses the cached fit scores, so it never leaves the API process.
@@ -79,7 +79,7 @@ A what-if change (budget, grade) reuses the cached fit scores, so it never leave
 4. Primary model on Groq for speed; falls back to Gemini on rate limit or error. If both fail, the client shows "chat is busy" and the rest of the app keeps working.
 
 ### 4.3 Grounded answers (RAG)
-1. Embed the question locally (bge-small, about 20–50 ms on CPU).
+1. Embed the question (Gemini embeddings, query task type; repeated questions hit an in-process cache).
 2. Retrieve top chunks from `documents` with pgvector, filtered by university when known.
 3. Prompt instructs the model to answer only from the retrieved chunks and cite `source_url`; otherwise say it does not know.
 4. Retrieved text is treated as data, never as instructions.
@@ -90,7 +90,7 @@ A what-if change (budget, grade) reuses the cached fit scores, so it never leave
 |---|---|
 | Network + validation | 20 ms |
 | Catalog cache hit | < 1 ms |
-| Fit cache hit / miss | < 1 ms / ~80 ms |
+| Fit cache hit / miss | < 1 ms / ~300 ms (one embedding call) |
 | Rules engine | ~10 ms |
 | Serialization | ~5 ms |
 
@@ -124,9 +124,9 @@ A what-if change (budget, grade) reuses the cached fit scores, so it never leave
 - Agent scenarios: tool choice, step limit, refusal when sources are missing.
 
 ## 11. Deployment (free tier)
-- Web on a static CDN host.
-- API and AI as containers on a scale-to-zero platform.
-- Managed PostgreSQL with pgvector.
+- Web on Vercel; API and AI as Docker web services on Render (`render.yaml`); PostgreSQL + pgvector on Neon.
+- Embeddings use Gemini's API rather than a local model: free hosts offer about 512 MB of memory, too little for a local model.
+  Trade-off: embeddings depend on an external rate limit, offset by caching query vectors and fit scores.
 - Known trade-off: scale-to-zero means a cold start after idle periods. Mitigated with a scheduled warm-up before demos.
 
 ## 12. Future work

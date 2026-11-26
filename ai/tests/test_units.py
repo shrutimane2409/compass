@@ -154,3 +154,64 @@ class TestInternalKey:
 
     def test_health_stays_open(self):
         assert self._client("s3cret").get("/health").status_code == 200
+
+
+class TestEmbeddingQuota:
+    DAILY = "429 RESOURCE_EXHAUSTED quotaId: EmbedContentRequestsPerDayPerUserPerProjectPerModel-FreeTier"
+
+    @pytest.fixture(autouse=True)
+    def provider(self, monkeypatch):
+        from app import embeddings
+        monkeypatch.setattr(embeddings, "_quota_exhausted_until", 0.0)
+        self.calls = 0
+
+        def fake(error):
+            def _query_vector(text):
+                self.calls += 1
+                raise Exception(error)
+            monkeypatch.setattr(embeddings, "_query_vector", _query_vector)
+        return fake
+
+    def test_daily_quota_raises_and_starts_cooldown(self, provider):
+        from app.embeddings import EmbeddingQuotaExhausted, embed_query
+        provider(self.DAILY)
+        with pytest.raises(EmbeddingQuotaExhausted):
+            embed_query("fees")
+        with pytest.raises(EmbeddingQuotaExhausted):
+            embed_query("fees")
+        assert self.calls == 1, "cooldown should skip the provider"
+
+    def test_other_errors_pass_through(self, provider):
+        from app.embeddings import EmbeddingQuotaExhausted, embed_query
+        provider("500 INTERNAL")
+        with pytest.raises(Exception) as info:
+            embed_query("fees")
+        assert not isinstance(info.value, EmbeddingQuotaExhausted)
+
+    def test_service_returns_503(self, provider):
+        from fastapi.testclient import TestClient
+        from app.config import get_settings
+        from app.main import app
+        provider(self.DAILY)
+        headers = {"X-Internal-Key": get_settings().internal_api_key or ""}
+        resp = TestClient(app).post("/fit", json={"interests": ["ai"], "courseIds": [1]}, headers=headers)
+        assert resp.status_code == 503
+        assert "temporarily unavailable" in resp.json()["detail"]
+
+    def test_chat_tool_reports_unavailable(self, provider):
+        from app.tools import search_sources
+        provider(self.DAILY)
+        out = json.loads(search_sources.invoke({"query": "visa"}))
+        assert out["results"] == [] and "temporarily unavailable" in out["error"]
+
+
+class TestContentHash:
+    def test_ignores_line_order_and_spacing(self):
+        from scripts.ingest import content_hash
+        a = "Courses of Interest\nFinancial Mathematics (T341)\nStatistical Data Science (T387)\n"
+        b = "Courses of Interest\r\n\n  Statistical\xa0Data Science (T387)\nFinancial Mathematics  (T341)"
+        assert content_hash(a) == content_hash(b)
+
+    def test_detects_real_changes(self):
+        from scripts.ingest import content_hash
+        assert content_hash("Closing date: 1 March") != content_hash("Closing date: 1 April")

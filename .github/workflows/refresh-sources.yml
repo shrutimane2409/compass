@@ -17,6 +17,7 @@ jobs:
       - name: Ingest changed pages and list courses to re-verify
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
         run: python -m scripts.ingest ../data/sources.txt | tee ingest.log
       - uses: actions/upload-artifact@v4
         with: { name: ingest-log, path: ai/ingest.log }

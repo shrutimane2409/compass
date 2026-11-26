@@ -1,0 +1,41 @@
+# Render Blueprint: New → Blueprint → select this repo. Secrets marked sync:false are entered in the dashboard.
+services:
+  - type: web
+    name: compass-ai
+    runtime: docker
+    plan: free
+    region: frankfurt
+    dockerContext: ./ai
+    dockerfilePath: ./ai/Dockerfile
+    healthCheckPath: /health
+    envVars:
+      - key: DATABASE_URL
+        sync: false
+      - key: INTERNAL_API_KEY
+        sync: false
+      - key: GROQ_API_KEY
+        sync: false
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: COMPASS_API_URL
+        sync: false
+
+  - type: web
+    name: compass-api
+    runtime: docker
+    plan: free
+    region: frankfurt
+    dockerContext: ./api
+    dockerfilePath: ./api/Dockerfile
+    healthCheckPath: /health/ready
+    envVars:
+      - key: ConnectionStrings__Compass
+        sync: false
+      - key: AiService__BaseUrl
+        sync: false
+      - key: AiService__InternalKey
+        sync: false
+      - key: Cors__Origins__0
+        sync: false
+      - key: ForwardedHeaders__Enabled
+        value: "true"

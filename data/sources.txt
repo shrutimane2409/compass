@@ -14,11 +14,22 @@ https://www.ucc.ie/en/ckl51/
 https://www.ucc.ie/en/ckl18/
 https://www.dcu.ie/courses/postgraduate/school-computing/msc-computing
 https://www.dcu.ie/courses/postgraduate/school-electronic-engineering/msc-electronic-computer-technology
-https://www.tcd.ie/courses/postgraduate/fees/
+# TCD: course pages, not the all-courses fees table (480 chunks); fees live in courses.csv
+https://www.tcd.ie/scss/courses/postgraduate/computer-science/
+https://www.tcd.ie/scss/courses/postgraduate/computer-science/application-requirements/
+https://www.tcd.ie/scss/courses/postgraduate/computer-science/data-science/
+https://www.tcd.ie/scss/courses/postgraduate/computer-science/intelligent-systems-ai/
+https://www.tcd.ie/scss/courses/postgraduate/computer-science/future-networked-systems/
+https://www.tcd.ie/scss/courses/postgraduate/computer-science/augmented--virtual-reality/
+https://www.tcd.ie/business/programmes/masters-programmes/msc-in-business-analytics-and-ai-for-management/programme-overview/
+https://www.tcd.ie/business/programmes/masters-programmes/msc-in-business-analytics-and-ai-for-management/timetable-and-modules/
 https://www.universityofgalway.ie/courses/taught-postgraduate-courses/computer-science-artificial-intelligence.html
 https://www.universityofgalway.ie/courses/taught-postgraduate-courses/msc-in-computer-science-data-analytics.html
-https://www.ul.ie/gps/artificial-intelligence-machine-learning-msc
-https://www.ul.ie/gps/course/software-engineering-msc
+# UL: the /gps/ URLs redirect here; modules and specialisations are on programme-content
+https://www.ul.ie/study/postgraduate/artificial-intelligence-and-machine-learning-msc
+https://www.ul.ie/study/postgraduate/artificial-intelligence-and-machine-learning-msc/programme-content
+https://www.ul.ie/study/postgraduate/software-engineering-msc
+https://www.ul.ie/study/postgraduate/software-engineering-msc/programme-content
 https://www.tudublin.ie/study/postgraduate/courses/computing-data-science/
 https://www.tudublin.ie/study/postgraduate/courses/data-analytics-ft/
 https://www.tudublin.ie/study/postgraduate/courses/human-centered-artificial-intelligence-tu471-full-time/

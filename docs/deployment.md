@@ -1,80 +1,70 @@
-# Deployment (free tiers)
+# Deployment (free tiers, no card)
 
-| Part | Host | Why |
-|---|---|---|
-| Database | **Neon** (PostgreSQL + pgvector) | Managed Postgres with the `vector` extension |
-| AI service | **Hugging Face Spaces** (Docker) | Enough memory for the local embedding model |
-| API | **Render** (Docker web service) | Runs the .NET container from `api/Dockerfile` |
-| Web | **Vercel** | Static hosting on a CDN |
+| Part | Host |
+|---|---|
+| Database | **Neon** (PostgreSQL + pgvector) |
+| AI service + API | **Render** (two free Docker web services, defined in `render.yaml`) |
+| Web | **Vercel** |
+| Embeddings and LLM | **Gemini** (embeddings, fallback LLM) and **Groq** (primary LLM), free API keys |
 
 Free-tier limits change; check each provider's current limits when you sign up.
-Free services sleep when idle, so the first request after a quiet period is slow (cold start).
-Open the site a minute before a demo.
+Free services sleep when idle, so the first request after a quiet period is slow. Open the site a minute before a demo.
 
-## 0. Generate a shared secret
+## 0. Keys you need
 
-    openssl rand -hex 32
-
-This is `INTERNAL_API_KEY` (AI service) and `AiService__InternalKey` (API). It stops anyone
-calling the public AI service directly and using up the free LLM quota.
+| Key | Where |
+|---|---|
+| Shared secret | `openssl rand -hex 32` in Terminal. Used as `INTERNAL_API_KEY` and `AiService__InternalKey` |
+| `GEMINI_API_KEY` | aistudio.google.com → Get API key (required: embeddings) |
+| `GROQ_API_KEY` | console.groq.com → API Keys |
 
 ## 1. Database: Neon
 
-1. Create a project and copy the connection string.
-2. Run the migrations in order:
+    for f in db/init/*.sql; do psql "$NEON_URL" -f "$f"; done
 
-       for f in db/init/*.sql; do psql "$NEON_URL" -f "$f"; done
+    cd ai && source .venv/bin/activate
+    export DATABASE_URL="$NEON_URL" GEMINI_API_KEY="..."
+    python -m scripts.load_courses ../data/courses.csv
+    python -m scripts.load_costs
+    python -m scripts.ingest ../data/sources.txt
 
-3. Load the data from your machine:
+Add `DATABASE_URL` and `GEMINI_API_KEY` as GitHub Actions secrets for the weekly source refresh.
 
-       cd ai && source .venv/bin/activate
-       export DATABASE_URL="$NEON_URL"
-       python -m scripts.load_courses ../data/courses.csv
-       python -m scripts.load_costs
-       python -m scripts.ingest ../data/sources.txt
+## 2. AI service and API: Render
 
-4. Add `DATABASE_URL` as a GitHub Actions secret so the weekly source refresh runs against Neon.
+1. render.com → sign up with GitHub → **New → Blueprint** → select the `compass` repo. Render reads `render.yaml`
+   and creates `compass-ai` and `compass-api`.
+2. Enter the secrets it asks for:
 
-## 2. AI service: Hugging Face Spaces
-
-1. New Space → SDK **Docker** → blank template.
-2. Push the contents of `ai/` to the Space repository, plus a `README.md` at its root starting with:
-
-       ---
-       title: Compass AI
-       sdk: docker
-       app_port: 8000
-       ---
-
-3. Settings → Variables and secrets:
-   `DATABASE_URL`, `INTERNAL_API_KEY`, `GROQ_API_KEY`, `GEMINI_API_KEY`,
-   `COMPASS_API_URL` (the Render URL from step 3).
-4. Check `https://<space-subdomain>.hf.space/health` returns `{"status":"ok"}`.
-
-## 3. API: Render
-
-1. New → Web Service → connect the GitHub repo → **Root directory** `api`, **Runtime** Docker.
-2. Environment variables:
+   **compass-ai**
 
    | Key | Value |
    |---|---|
-   | `ConnectionStrings__Compass` | `Host=<neon-host>;Database=<db>;Username=<user>;Password=<password>;SSL Mode=Require` |
-   | `AiService__BaseUrl` | `https://<space-subdomain>.hf.space` |
+   | `DATABASE_URL` | Neon connection string |
+   | `INTERNAL_API_KEY` | the shared secret |
+   | `GEMINI_API_KEY`, `GROQ_API_KEY` | your keys |
+   | `COMPASS_API_URL` | `https://compass-api.onrender.com` (the API's URL) |
+
+   **compass-api**
+
+   | Key | Value |
+   |---|---|
+   | `ConnectionStrings__Compass` | `Host=<neon-host>;Database=neondb;Username=neondb_owner;Password=<password>;SSL Mode=Require` |
+   | `AiService__BaseUrl` | `https://compass-ai.onrender.com` (the AI service's URL) |
    | `AiService__InternalKey` | the shared secret |
-   | `Cors__Origins__0` | your Vercel URL, e.g. `https://compass-xyz.vercel.app` |
-   | `ForwardedHeaders__Enabled` | `true` |
+   | `Cors__Origins__0` | your Vercel URL (add after step 3) |
 
-3. Health check path: `/health/ready`. The container listens on port 8080.
+   Render shows each service's real URL on its page; use those if they differ from the names above.
+3. Check `https://<compass-ai-url>/health` and `https://<compass-api-url>/health/ready`.
 
-## 4. Web: Vercel
+## 3. Web: Vercel
 
-1. Import the repo → **Root directory** `web` → framework Vite.
-2. Environment variable: `VITE_API_BASE` = the Render URL (no trailing slash).
-3. Deploy, then put the Vercel URL into `Cors__Origins__0` on Render.
+1. vercel.com → sign up with GitHub → **Add New → Project** → import `compass` → **Root Directory** `web`.
+2. Environment variable `VITE_API_BASE` = the compass-api URL (no trailing slash). Deploy.
+3. Put the Vercel URL into `Cors__Origins__0` on compass-api and redeploy it.
 
-## 5. Smoke test
+## 4. Smoke test
 
-    curl https://<render-url>/health/ready
-    cd ai && python -m evals.golden_profiles https://<render-url>
+    cd ai && python -m evals.golden_profiles https://<compass-api-url>
 
-Then open the Vercel URL, run a search, drag the budget slider and ask the chat a question.
+Open the Vercel URL, run a search, drag the budget slider, and ask the chat a question.

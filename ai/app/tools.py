@@ -12,6 +12,7 @@ from pydantic import BaseModel, Field
 
 from . import retrieval
 from .config import get_settings
+from .embeddings import EmbeddingQuotaExhausted
 
 MAX_RESULTS = 8
 MAX_CHUNK_CHARS = 1200
@@ -77,7 +78,12 @@ async def get_recommendations(**args) -> str:
 def search_sources(query: str, site: str | None = None) -> str:
     """Search official university and government pages. Returns text excerpts with source URLs and fetch dates.
     Use this for visa, scholarship, accommodation, course content or application questions."""
-    chunks = retrieval.search(query, url_contains=site)
+    try:
+        chunks = retrieval.search(query, url_contains=site)
+    except EmbeddingQuotaExhausted:
+        return json.dumps({"results": [], "error": "Official-source search is temporarily unavailable. "
+                           "Tell the student, answer only from what you already know with that caveat, "
+                           "and suggest checking the university's own page."})
     if not chunks:
         return json.dumps({"results": [], "note": "No official source found."})
     return json.dumps({"results": [

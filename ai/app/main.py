@@ -1,6 +1,6 @@
 """Compass AI service.
 
-Owns everything probabilistic: course-fit scoring (local embeddings + pgvector),
+Owns everything probabilistic: course-fit scoring (embeddings + pgvector),
 retrieval over official sources, and the counsellor agent.
 It never decides eligibility or cost; the Compass API does that with deterministic rules.
 """
@@ -9,14 +9,14 @@ from contextlib import asynccontextmanager
 
 import hmac
 
-from fastapi import Depends, FastAPI, Header, HTTPException
-from fastapi.responses import StreamingResponse
+from fastapi import Depends, FastAPI, Header, HTTPException, Request
+from fastapi.responses import JSONResponse, StreamingResponse
 from pydantic import BaseModel, Field
 
 from . import retrieval
 from .agent import ChatRequest, stream_chat
 from .config import get_settings
-from .embeddings import warm_up
+from .embeddings import EmbeddingQuotaExhausted, warm_up
 from .fit import FitRequest, FitResponse, score_courses
 
 logging.basicConfig(level=logging.INFO)
@@ -33,6 +33,14 @@ async def lifespan(_: FastAPI):
 
 
 app = FastAPI(title="Compass AI", version="0.2.0", lifespan=lifespan)
+
+
+@app.exception_handler(EmbeddingQuotaExhausted)
+async def quota_exhausted(_: Request, ex: EmbeddingQuotaExhausted) -> JSONResponse:
+    """Daily embedding quota used up: a clear, retryable 503 instead of a 500 with a traceback."""
+    log.warning("Embedding quota exhausted: %s", ex)
+    return JSONResponse(status_code=503, headers={"Retry-After": "3600"},
+                        content={"detail": "Search is temporarily unavailable. Please try again later."})
 
 
 def require_internal_key(x_internal_key: str | None = Header(default=None)) -> None:

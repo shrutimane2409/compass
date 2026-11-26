@@ -9,7 +9,7 @@ RUN dotnet publish src/Compass.Api/Compass.Api.csproj -c Release -o /app --no-re
 FROM mcr.microsoft.com/dotnet/aspnet:10.0
 WORKDIR /app
 COPY --from=build /app .
-ENV ASPNETCORE_HTTP_PORTS=8080
 EXPOSE 8080
 USER $APP_UID
-ENTRYPOINT ["dotnet", "Compass.Api.dll"]
+# Hosts such as Render pass the port in $PORT; default to 8080
+CMD ["sh", "-c", "ASPNETCORE_HTTP_PORTS=${PORT:-8080} exec dotnet Compass.Api.dll"]

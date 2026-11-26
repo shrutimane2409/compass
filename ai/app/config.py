@@ -18,11 +18,11 @@ class Settings(BaseSettings):
     gemini_model: str = "gemini-2.5-flash"
     llm_timeout_seconds: float = 20.0
 
-    embedding_model: str = "BAAI/bge-small-en-v1.5"  # 384 dimensions, matches the schema
+    embedding_model: str = "models/gemini-embedding-001"  # requested at 768 dimensions
 
-    # Cosine similarity range mapped to a 0..1 fit score
-    fit_similarity_low: float = 0.35
-    fit_similarity_high: float = 0.85
+    # Cosine similarity range mapped to a 0..1 fit score (calibrated for the embedding model in use)
+    fit_similarity_low: float = 0.45
+    fit_similarity_high: float = 0.80
 
     agent_max_steps: int = 4
     retrieval_top_k: int = 6
