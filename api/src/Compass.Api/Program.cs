@@ -13,8 +13,8 @@ using OpenTelemetry.Trace;
 var builder = WebApplication.CreateBuilder(args);
 var config = builder.Configuration;
 
-var connectionString = config.GetConnectionString("Compass")
-    ?? throw new InvalidOperationException("Connection string 'Compass' is missing.");
+var connectionString = PostgresConnectionString.Normalize(config.GetConnectionString("Compass")
+    ?? throw new InvalidOperationException("Connection string 'Compass' is missing."));
 var aiBaseUrl = new Uri(config["AiService:BaseUrl"]
     ?? throw new InvalidOperationException("AiService:BaseUrl is missing."));
 var origins = config.GetSection("Cors:Origins").Get<string[]>() ?? [];
@@ -66,7 +66,7 @@ if (config.GetValue<bool>("ForwardedHeaders:Enabled"))
     {
         o.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
         o.KnownProxies.Clear();
-        o.KnownNetworks.Clear();
+        o.KnownIPNetworks.Clear();
     });
 }
 
