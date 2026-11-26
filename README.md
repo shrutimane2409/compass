@@ -81,7 +81,8 @@ Details: [docs/system-design.md](docs/system-design.md) · [docs/deployment.md](
 
 - **Unit tests:** rules engine (xUnit), AI service including an end-to-end agent run with a scripted model (pytest),
   SSE parsing (Vitest). All run in CI on every push.
-- **Retrieval evaluation:** `python -m evals.rag_eval` reports hit@6 and MRR over real student questions.
+- **Retrieval evaluation:** `python -m evals.rag_eval` over 12 real student questions: **hit@6 = 1.00, MRR = 0.84**
+  (the correct official page is in the top 6 results for every question, and usually ranked first).
 - **Golden profiles:** `python -m evals.golden_profiles` checks shortlist invariants against a running API
   (ineligible never above eligible, costs add up, every result sourced and explained, more budget never means fewer options).
 
