@@ -7,7 +7,7 @@ and links every fact to the official page it came from. No commissions, no hidde
 **Scope (MVP):** India → Ireland · taught master's · Computer Science, Data Science, AI, Software Engineering ·
 24 courses across 8 universities.
 
-> Live demo: coming soon
+> **Live demo:** https://compass-tau-three.vercel.app  (free hosting: the first request after a quiet period can take ~30 s while the backend wakes up)
 
 ## Why
 
@@ -52,6 +52,15 @@ The AI can reorder courses through the fit score. It can never change whether a 
 
 ## Engineering highlights
 
+- **Never falsely green.** A course is *Eligible* only when every requirement is published and met; anything
+  unpublished shows *Check requirements*, borderline cases show *Reach*. Each requirement links to the official page it came from.
+- **Explainable ranking.** Explicit weights the student can change (balanced, best fit, lowest cost), with the score
+  breakdown shown for every course. Deterministic tie-breaks.
+- **Uncertainty is labelled.** Fees from earlier academic years, derived values and stale data are tagged; rupee budgets
+  convert at the European Central Bank's dated reference rate.
+- **Grounded chat.** Every link in an answer is checked against the sources the agent actually retrieved, and the student sees the result.
+- **Correction loop.** "Report an error" on every course feeds a review queue; a weekly job re-fetches official pages and lists changes.
+
 - **LLM kept off the hot path.** Shortlist and what-if never call an LLM: the catalog is cached in memory,
   fit scores are cached per interest set, and the rules engine evaluates every course in memory.
 - **Graceful degradation.** If the AI service or every LLM provider is down, the shortlist, costs and
@@ -65,7 +74,13 @@ The AI can reorder courses through the fit score. It can never change whether a 
   re-fetches sources and lists changed pages for re-verification.
 - **Observability.** OpenTelemetry tracing across services, health and readiness probes.
 
-Details: [docs/system-design.md](docs/system-design.md) · [docs/deployment.md](docs/deployment.md) · [data/README.md](data/README.md)
+Details: [docs/decision-engine.md](docs/decision-engine.md) · [docs/system-design.md](docs/system-design.md) · [docs/deployment.md](docs/deployment.md) · [data/README.md](data/README.md)
+
+### Operating it in production
+- **Anonymous usage analytics**: searches, chats, reports and "was this helpful?" votes go into a bounded in-memory queue and are batch-written by a background service, so analytics can never slow or break a request. No names, emails, IPs or profile values are stored. See [docs/operations.md](docs/operations.md).
+- **Uptime and keep-warm**: a scheduled workflow checks `/health/ready` during active hours; a failure emails the owner.
+- **Nightly decision checks**: golden student profiles run against the live API every night and fail on any broken invariant.
+- **Feedback loop**: every "Report an error" becomes a GitHub issue automatically, verified against the official page before data changes.
 
 ## Tech stack
 
@@ -120,7 +135,7 @@ Or everything in Docker: `docker compose --profile app up -d --build` → http:/
 - [x] Rules engine, API hardening, AI service, web app, CI
 - [x] 24 sourced courses: fees, English requirements, India grade minimums, accepted backgrounds, living costs
 - [x] Evaluation suite
-- [ ] Free-tier deployment and live demo
+- [x] Free-tier deployment (Vercel, Render, Neon) and live demo
 - [ ] Alternative entry routes (work experience, RPL) and per-band English minimums
 - [ ] More countries
 

@@ -31,6 +31,8 @@ builder.Services.AddSingleton<CourseRepository>();
 builder.Services.AddMemoryCache();
 builder.Services.AddSingleton<CourseCatalog>();
 builder.Services.AddSingleton(TimeProvider.System);
+builder.Services.AddSingleton<UsageTracker>();
+builder.Services.AddHostedService<UsageWriter>();
 
 // Domain
 builder.Services.AddSingleton<EligibilityEvaluator>();
@@ -51,6 +53,8 @@ builder.Services.AddHttpClient(ChatEndpoints.StreamClient, c =>
     c.Timeout = TimeSpan.FromMinutes(2);
 });
 builder.Services.AddScoped<FitScoreService>();
+builder.Services.AddHttpClient<ExchangeRateService>(c => c.Timeout = TimeSpan.FromSeconds(10))
+    .AddStandardResilienceHandler();
 
 // Platform
 builder.Services.AddProblemDetails();
@@ -89,5 +93,7 @@ app.MapHealthChecks("/health/live", new HealthCheckOptions { Predicate = _ => fa
 app.MapHealthChecks("/health/ready", new HealthCheckOptions { Predicate = c => c.Tags.Contains("ready") });
 app.MapRecommendationEndpoints();
 app.MapChatEndpoints();
+app.MapFeedbackEndpoints();
+app.MapUsageEndpoints();
 
 app.Run();

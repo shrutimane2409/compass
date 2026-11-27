@@ -71,7 +71,8 @@ public class EligibilityEvaluatorTests
     {
         var s = Student() with { English = null };
         var r = _sut.Evaluate(s, Course());
-        Assert.Equal(EligibilityStatus.Eligible, r.Status);
+        Assert.Equal(EligibilityStatus.LikelyEligible, r.Status);
+        Assert.Contains(r.Checks, c => c.Name == "English" && c.State == CheckState.StudentPending);
         Assert.True(r.HasUnknowns);
     }
 
@@ -120,8 +121,9 @@ public class EligibilityEvaluatorTests
     public void Unstated_grade_requirement_is_unknown()
     {
         var r = _sut.Evaluate(Student(), Course(minGrade: null));
-        Assert.Contains(r.Checks, c => c.Name == "Grade" && c.Passed is null);
-        Assert.Equal(EligibilityStatus.Eligible, r.Status);
+        Assert.Contains(r.Checks, c => c.Name == "Grade" && c.State == CheckState.NotPublished);
+        // Missing information must never produce a green "Eligible".
+        Assert.Equal(EligibilityStatus.LikelyEligible, r.Status);
     }
 
     [Fact]
@@ -129,5 +131,41 @@ public class EligibilityEvaluatorTests
     {
         var r = _sut.Evaluate(Student(work: 1m), Course(minWork: 2m));
         Assert.Equal(EligibilityStatus.NotEligible, r.Status);
+    }
+
+    [Fact]
+    public void Borderline_grade_is_not_shown_as_met()
+    {
+        var r = _sut.Evaluate(Student(grade: 58m), Course(minGrade: 60m));
+        Assert.Contains(r.Checks, c => c.Name == "Grade" && c.State == CheckState.Borderline && c.Passed is null);
+    }
+
+    [Fact]
+    public void Borderline_takes_precedence_over_unpublished()
+    {
+        var r = _sut.Evaluate(Student(grade: 58m), Course(minGrade: 60m, ielts: null, pte: null));
+        Assert.Equal(EligibilityStatus.Borderline, r.Status);
+    }
+
+    [Fact]
+    public void Each_check_links_to_the_page_its_requirement_comes_from()
+    {
+        var course = Course() with
+        {
+            GradeSourceUrl = "https://example.org/india",
+            EnglishSourceUrl = "https://example.org/english",
+            EntrySourceUrl = "https://example.org/entry"
+        };
+        var r = _sut.Evaluate(Student(), course);
+        Assert.Equal("https://example.org/india", r.Checks.Single(c => c.Name == "Grade").SourceUrl);
+        Assert.Equal("https://example.org/english", r.Checks.Single(c => c.Name == "English").SourceUrl);
+        Assert.Equal("https://example.org/entry", r.Checks.Single(c => c.Name == "Background").SourceUrl);
+    }
+
+    [Fact]
+    public void Checks_fall_back_to_the_course_page()
+    {
+        var r = _sut.Evaluate(Student(), Course());
+        Assert.All(r.Checks, c => Assert.Equal("https://example.org/course", c.SourceUrl));
     }
 }

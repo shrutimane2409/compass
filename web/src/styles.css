@@ -118,3 +118,30 @@ thead th { font-size: .8rem; }
   .left { position: static; }
   .cost { grid-template-columns: 1fr; }
 }
+
+/* decision transparency */
+.legend { font-size: .78rem; color: var(--muted); }
+.t-LikelyEligible { background: #e0f2fe; color: #0369a1; }
+.t-FeeYearUnconfirmed { background: #fef3c7; color: var(--warn); }
+.checks .pending b { color: #0369a1; }
+.checks .note { color: var(--muted); }
+.check-name { font-weight: 600; }
+.breakdown { font-size: .78rem; color: var(--muted); margin: 8px 0 0; }
+.toolbar select { width: auto; padding: 4px 8px; }
+.card footer { flex-wrap: wrap; gap: 8px; align-items: center; }
+button.small { font-size: .78rem; padding: 4px 10px; }
+.link.small { padding: 0; }
+.report { display: flex; flex-wrap: wrap; gap: 6px; width: 100%; }
+.report select { width: auto; }
+.report input { flex: 1; min-width: 200px; }
+.report-done { font-size: .78rem; color: var(--good); }
+.grounding { margin-top: 8px; font-size: .75rem; padding-top: 6px; border-top: 1px solid var(--line); }
+.grounding.ok { color: var(--good); }
+.grounding.warn { color: var(--warn); }
+.grounding.info { color: var(--muted); }
+
+.helpful { display: flex; align-items: center; gap: .5rem; margin: 1rem 0 .25rem; font-size: .85rem; color: var(--muted, #666); }
+.helpful button { padding: .15rem .6rem; border: 1px solid currentColor; border-radius: 999px; background: transparent; color: inherit; cursor: pointer; font-size: .8rem; }
+.helpful button:hover { color: var(--accent, #0a6); }
+.helpful.done { font-style: italic; }
+.site-footer { padding: 1rem 1.5rem 2rem; font-size: .78rem; color: var(--muted, #666); text-align: center; max-width: 60rem; margin: 0 auto; }

@@ -18,7 +18,9 @@ def chat_models() -> list[BaseChatModel]:
     if s.groq_api_key:
         models.append(ChatGroq(
             model=s.groq_model, api_key=s.groq_api_key, temperature=0.2,
-            timeout=s.llm_timeout_seconds, max_retries=1,
+            # No client-side retries: on a free-tier 429 the SDK would sleep for the Retry-After
+            # (often 30-60 s). Failing fast lets with_fallbacks hand the turn to Gemini instead.
+            timeout=s.llm_timeout_seconds, max_retries=0,
         ))
     if s.gemini_api_key:
         models.append(ChatGoogleGenerativeAI(

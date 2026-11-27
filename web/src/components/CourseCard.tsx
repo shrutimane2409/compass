@@ -1,5 +1,6 @@
-import { eur, inrLakh, TAG_LABEL } from "../format";
-import type { Recommendation } from "../types";
+import { eur, inrLakh, pct, TAG_HINT, TAG_LABEL } from "../format";
+import type { CheckState, Recommendation } from "../types";
+import { ReportError } from "./ReportError";
 
 interface Props {
   rec: Recommendation;
@@ -10,11 +11,18 @@ interface Props {
   compareDisabled: boolean;
 }
 
-const mark = (p: boolean | null) => (p === true ? "✓" : p === false ? "✗" : "?");
+const STATE: Record<CheckState, { mark: string; cls: string; label: string }> = {
+  Met: { mark: "✓", cls: "ok", label: "Met" },
+  NotMet: { mark: "✗", cls: "bad", label: "Not met" },
+  Borderline: { mark: "~", cls: "unknown", label: "Borderline" },
+  NotPublished: { mark: "?", cls: "unknown", label: "Not published" },
+  StudentPending: { mark: "…", cls: "pending", label: "Your details needed" },
+};
 
 export function CourseCard({ rec, rank, inrPerEur, compared, onToggleCompare, compareDisabled }: Props) {
-  const { course: c, cost } = rec;
+  const { course: c, cost, breakdown: b } = rec;
   const verified = new Date(c.verifiedAt).toLocaleDateString("en-IE", { day: "numeric", month: "short", year: "numeric" });
+  const checkDetails = new Set(rec.eligibility.checks.map((ch) => ch.detail));
 
   return (
     <article className={`card ${rec.eligibility.status === "NotEligible" ? "muted" : ""}`}>
@@ -30,7 +38,7 @@ export function CourseCard({ rec, rank, inrPerEur, compared, onToggleCompare, co
       </header>
 
       <div className="tags">
-        {rec.tags.map((t) => <span key={t} className={`tag t-${t}`}>{TAG_LABEL[t] ?? t}</span>)}
+        {rec.tags.map((t) => <span key={t} className={`tag t-${t}`} title={TAG_HINT[t]}>{TAG_LABEL[t] ?? t}</span>)}
       </div>
 
       <div className="cost">
@@ -39,7 +47,7 @@ export function CourseCard({ rec, rank, inrPerEur, compared, onToggleCompare, co
           <span>{inrLakh(cost.total, inrPerEur)} estimated total</span>
         </div>
         <dl>
-          <div><dt>Tuition{c.feeAcademicYear ? ` (${c.feeAcademicYear})` : ""}</dt><dd>{eur(cost.tuition)}</dd></div>
+          <div><dt>Tuition{c.feeAcademicYear ? ` (${c.feeAcademicYear})` : " (year not stated)"}</dt><dd>{eur(cost.tuition)}</dd></div>
           <div><dt>Living × {c.durationMonths} mo</dt><dd>{eur(cost.living)}</dd></div>
           <div><dt>One-off</dt><dd>{eur(cost.oneOff)}</dd></div>
         </dl>
@@ -48,27 +56,27 @@ export function CourseCard({ rec, rank, inrPerEur, compared, onToggleCompare, co
       <details>
         <summary>Why this result</summary>
         <ul className="checks">
-          {rec.eligibility.checks.map((ch) => (
-            <li key={ch.name} className={ch.passed === true ? "ok" : ch.passed === false ? "bad" : "unknown"}>
-              <b>{mark(ch.passed)}</b> {ch.detail}
-            </li>
-          ))}
-          {rec.reasons.filter((r) => !rec.eligibility.checks.some((ch) => ch.detail === r)).map((r) => <li key={r}>{r}</li>)}
+          {rec.eligibility.checks.map((ch) => {
+            const s = STATE[ch.state];
+            return (
+              <li key={ch.name} className={s.cls}>
+                <b title={s.label}>{s.mark}</b> <span className="check-name">{ch.name}:</span> {ch.detail}
+                {ch.sourceUrl && <> <a href={ch.sourceUrl} target="_blank" rel="noreferrer">source ↗</a></>}
+              </li>
+            );
+          })}
+          {rec.reasons.filter((r) => !checkDetails.has(r)).map((r) => <li key={r} className="note">{r}</li>)}
         </ul>
+        <p className="breakdown">
+          Ranked on course fit {pct(b.fit)} × {pct(b.weights.fit)}, affordability {pct(b.affordability)} × {pct(b.weights.affordability)},
+          eligibility {pct(b.eligibility)} × {pct(b.weights.eligibility)} = <b>{pct(b.total)}</b>
+        </p>
       </details>
 
       <footer>
-        <a href={c.sourceUrl} target="_blank" rel="noreferrer">Official source ↗</a>
-        {c.englishSourceUrl && (
-          <a href={c.englishSourceUrl} target="_blank" rel="noreferrer">English requirement ↗</a>
-        )}
-        {c.entrySourceUrl && (
-          <a href={c.entrySourceUrl} target="_blank" rel="noreferrer">Entry requirements ↗</a>
-        )}
-        {c.gradeSourceUrl && (
-          <a href={c.gradeSourceUrl} target="_blank" rel="noreferrer">India grade conversion ↗</a>
-        )}
+        <a href={c.sourceUrl} target="_blank" rel="noreferrer">Official course page ↗</a>
         <span>Verified {verified}</span>
+        <ReportError courseId={c.id} />
       </footer>
     </article>
   );

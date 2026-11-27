@@ -52,6 +52,11 @@ def check(name: str, client: httpx.Client) -> list[str]:
             failures.append(f"{c['title']}: missing official source")
         if abs(cost["tuition"] + cost["living"] + cost["oneOff"] - cost["total"]) > 0.01:
             failures.append(f"{c['title']}: cost parts do not add up to the total")
+        states = [ch["state"] for ch in i["eligibility"]["checks"]]
+        if i["eligibility"]["status"] == "Eligible" and any(st != "Met" for st in states):
+            failures.append(f"{c['title']}: shown as Eligible with an unmet or unpublished requirement")
+        if any(not ch.get("sourceUrl") for ch in i["eligibility"]["checks"]):
+            failures.append(f"{c['title']}: a requirement has no source link")
         if not i["reasons"]:
             failures.append(f"{c['title']}: no explanation")
         afford = i["affordability"]

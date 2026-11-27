@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { CGPA_FACTOR } from "../format";
-import type { EnglishTest } from "../types";
+import type { EnglishTest, ExchangeRate } from "../types";
 
 export interface FormState {
   gradeMode: "percent" | "cgpa";
@@ -37,9 +37,10 @@ interface Props {
   onChange: (next: FormState) => void;
   onSubmit: () => void;
   submitted: boolean;
+  fx: ExchangeRate | null;
 }
 
-export function ProfileForm({ value: f, onChange, onSubmit, submitted }: Props) {
+export function ProfileForm({ value: f, onChange, onSubmit, submitted, fx }: Props) {
   const [interestDraft, setInterestDraft] = useState("");
   const set = <K extends keyof FormState>(k: K, v: FormState[K]) => onChange({ ...f, [k]: v });
 
@@ -107,7 +108,11 @@ export function ProfileForm({ value: f, onChange, onSubmit, submitted }: Props) 
         <small>
           At ₹<input className="rate" type="number" min={1} step="0.01" value={f.inrPerEur}
                      onChange={(e) => set("inrPerEur", Number(e.target.value))} aria-label="INR per EUR" />
-          per € (set today's rate) ≈ €{Math.round((f.budgetLakh * 100000) / f.inrPerEur).toLocaleString("en-IE")}
+          per € ≈ €{Math.round((f.budgetLakh * 100000) / f.inrPerEur).toLocaleString("en-IE")}
+          <br />
+          {fx
+            ? <>Rate: <a href={fx.sourceUrl} target="_blank" rel="noreferrer">ECB reference rate</a>, {fx.date}{f.inrPerEur !== Math.round(fx.perEur * 100) / 100 && " (edited)"}</>
+            : "Enter today's rate"}
         </small>
       </label>
 

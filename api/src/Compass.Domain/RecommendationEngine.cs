@@ -1,6 +1,10 @@
 namespace Compass.Domain;
 
-public enum Tag { Eligible, Reach, NotEligible, GoodFit, Affordable, Stretch, OverBudget, StaleData, Estimate }
+public enum Tag
+{
+    Eligible, LikelyEligible, Reach, NotEligible, GoodFit,
+    Affordable, Stretch, OverBudget, StaleData, Estimate, FeeYearUnconfirmed
+}
 
 public sealed record Recommendation(
     Course Course,
@@ -9,15 +13,17 @@ public sealed record Recommendation(
     Affordability Affordability,
     double FitScore,
     double Score,
+    ScoreBreakdown Breakdown,
     IReadOnlyList<Tag> Tags,
     IReadOnlyList<string> Reasons);
 
-/// <summary>Inputs that come from outside the domain: city costs, one-off costs and AI fit scores (0..1).</summary>
+/// <summary>Inputs from outside the domain: city costs, one-off costs, AI fit scores (0..1), the date, and the student's priority.</summary>
 public sealed record RecommendationContext(
     IReadOnlyDictionary<string, decimal> MonthlyLivingByCity,
     decimal OneOffEur,
     IReadOnlyDictionary<int, double> FitScores,
-    DateOnly Today);
+    DateOnly Today,
+    Priority Priority = Priority.Balanced);
 
 /// <summary>
 /// Combines deterministic eligibility and cost rules with an AI-provided fit score.
@@ -26,25 +32,31 @@ public sealed record RecommendationContext(
 public sealed class RecommendationEngine(EligibilityEvaluator eligibility, CostCalculator costs)
 {
     public const double GoodFitThreshold = 0.6;
+    public const double NeutralFit = 0.5;
     public const int StaleAfterDays = 180;
 
     public IReadOnlyList<Recommendation> Recommend(StudentProfile student, IEnumerable<Course> courses, RecommendationContext ctx)
     {
+        var weights = RankingWeights.For(ctx.Priority);
+        var intake = AcademicYear.UpcomingIntake(ctx.Today);
         return courses
-            .Select(c => Build(student, c, ctx))
+            .Select(c => Build(student, c, ctx, weights, intake))
             .OrderBy(r => r.Eligibility.Status == EligibilityStatus.NotEligible)
             .ThenByDescending(r => r.Score)
+            .ThenBy(r => r.Cost.Total)
+            .ThenBy(r => r.Course.Id)
             .ToList();
     }
 
-    private Recommendation Build(StudentProfile s, Course c, RecommendationContext ctx)
+    private Recommendation Build(StudentProfile s, Course c, RecommendationContext ctx, RankingWeights weights, string intake)
     {
         var elig = eligibility.Evaluate(s, c);
         if (!ctx.MonthlyLivingByCity.TryGetValue(c.City, out var monthly))
             throw new InvalidOperationException($"No living-cost data for {c.City}.");
         var cost = costs.Calculate(c, monthly, ctx.OneOffEur);
         var afford = costs.Assess(cost, s.BudgetEur);
-        var fit = Math.Clamp(ctx.FitScores.GetValueOrDefault(c.Id, 0.5), 0, 1);
+        var hasFit = ctx.FitScores.TryGetValue(c.Id, out var rawFit);
+        var fit = hasFit ? Math.Clamp(rawFit, 0, 1) : NeutralFit;
 
         var tags = new List<Tag>();
         var reasons = new List<string>();
@@ -52,12 +64,13 @@ public sealed class RecommendationEngine(EligibilityEvaluator eligibility, CostC
         tags.Add(elig.Status switch
         {
             EligibilityStatus.Eligible => Tag.Eligible,
+            EligibilityStatus.LikelyEligible => Tag.LikelyEligible,
             EligibilityStatus.Borderline => Tag.Reach,
             _ => Tag.NotEligible
         });
         reasons.AddRange(elig.Checks.Select(x => x.Detail));
 
-        if (fit >= GoodFitThreshold)
+        if (hasFit && fit >= GoodFitThreshold)
         {
             tags.Add(Tag.GoodFit);
             reasons.Add($"Course content matches your interests (fit {fit:P0}).");
@@ -76,6 +89,19 @@ public sealed class RecommendationEngine(EligibilityEvaluator eligibility, CostC
             _ => $"Estimated total €{cost.Total:N0} is well above your €{s.BudgetEur:N0} budget."
         });
 
+        var feeYear = AcademicYear.StartYear(c.FeeAcademicYear);
+        var intakeYear = AcademicYear.StartYear(intake)!.Value;
+        if (feeYear is null)
+        {
+            tags.Add(Tag.FeeYearUnconfirmed);
+            reasons.Add($"The page doesn't say which year the fee applies to. Confirm the {intake} fee with the university.");
+        }
+        else if (feeYear < intakeYear)
+        {
+            tags.Add(Tag.FeeYearUnconfirmed);
+            reasons.Add($"The fee shown is for {c.FeeAcademicYear}. Fees for the {intake} intake may be higher.");
+        }
+
         var ageDays = ctx.Today.DayNumber - c.VerifiedAt.DayNumber;
         if (ageDays > StaleAfterDays)
         {
@@ -84,10 +110,12 @@ public sealed class RecommendationEngine(EligibilityEvaluator eligibility, CostC
         }
         if (c.IsEstimate) tags.Add(Tag.Estimate);
 
-        var eligScore = elig.Status switch { EligibilityStatus.Eligible => 1.0, EligibilityStatus.Borderline => 0.5, _ => 0.0 };
-        var affordScore = afford switch { Affordability.Affordable => 1.0, Affordability.Stretch => 0.5, _ => 0.0 };
-        var score = Math.Round(0.6 * fit + 0.25 * affordScore + 0.15 * eligScore, 4);
+        var breakdown = Scoring.Score(
+            fit,
+            Scoring.AffordabilityScore(afford, cost.Total, s.BudgetEur),
+            Scoring.EligibilityScore(elig.Status),
+            weights);
 
-        return new Recommendation(c, elig, cost, afford, fit, score, tags, reasons);
+        return new Recommendation(c, elig, cost, afford, fit, breakdown.Total, breakdown, tags, reasons);
     }
 }

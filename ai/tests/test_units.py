@@ -101,7 +101,7 @@ def test_summarise_recommendations_keeps_facts_and_sources():
     }] * 12}
     out = summarise_recommendations(payload)
     assert out["fitAvailable"] is True
-    assert len(out["results"]) == 8
+    assert len(out["results"]) == 5
     assert out["results"][0]["totalCostEur"] == 39000
     assert out["results"][0]["sourceUrl"] == "https://u.ie/x"
     json.dumps(out)

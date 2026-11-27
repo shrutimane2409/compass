@@ -1,11 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { getRecommendations } from "./api";
+import { getExchangeRate, getRecommendations } from "./api";
 import { Chat } from "./components/Chat";
 import { Compare } from "./components/Compare";
 import { CourseCard } from "./components/CourseCard";
+import { Helpful } from "./components/Helpful";
 import { gradePercent, ProfileForm, type FormState } from "./components/ProfileForm";
 import { WhatIf } from "./components/WhatIf";
-import type { RecommendationResponse, StudentProfile } from "./types";
+import type { ExchangeRate, Priority, RecommendationResponse, StudentProfile } from "./types";
 
 const INITIAL: FormState = {
   gradeMode: "percent",
@@ -38,7 +39,18 @@ export default function App() {
   const [error, setError] = useState("");
   const [hideIneligible, setHideIneligible] = useState(true);
   const [compareIds, setCompareIds] = useState<number[]>([]);
+  const [priority, setPriority] = useState<Priority>("Balanced");
+  const [fx, setFx] = useState<ExchangeRate | null>(null);
   const inflight = useRef<AbortController | null>(null);
+
+  // Official ECB reference rate for INR, so the rupee budget converts at a real, dated rate.
+  useEffect(() => {
+    getExchangeRate("INR").then((rate) => {
+      if (!rate) return;
+      setFx(rate);
+      setForm((f) => (f.inrPerEur === INITIAL.inrPerEur ? { ...f, inrPerEur: Math.round(rate.perEur * 100) / 100 } : f));
+    });
+  }, []);
 
   const profile = useMemo(() => toProfile(form), [form]);
 
@@ -51,7 +63,7 @@ export default function App() {
       inflight.current = ctrl;
       setLoading(true);
       try {
-        setData(await getRecommendations(profile, ctrl.signal));
+        setData(await getRecommendations(profile, priority, ctrl.signal));
         setError("");
       } catch (e) {
         if ((e as Error).name !== "AbortError") setError((e as Error).message);
@@ -60,7 +72,7 @@ export default function App() {
       }
     }, 250);
     return () => clearTimeout(timer);
-  }, [profile, submitted]);
+  }, [profile, priority, submitted]);
 
   const items = data?.items ?? [];
   const visible = hideIneligible ? items.filter((r) => r.eligibility.status !== "NotEligible") : items;
@@ -77,7 +89,7 @@ export default function App() {
 
       <main className="layout">
         <aside className="left">
-          <ProfileForm value={form} onChange={setForm} onSubmit={() => setSubmitted(true)} submitted={submitted} />
+          <ProfileForm value={form} onChange={setForm} onSubmit={() => setSubmitted(true)} submitted={submitted} fx={fx} />
           {data && <WhatIf budgetLakh={form.budgetLakh} onBudget={(v) => setForm({ ...form, budgetLakh: v })} items={items} />}
         </aside>
 
@@ -92,8 +104,19 @@ export default function App() {
           {data && (
             <>
               <div className="toolbar">
-                <span>{visible.length} courses {loading && <em className="loading">updating…</em>}</span>
+                <span>{visible.length} courses for the {data.targetIntake} intake {loading && <em className="loading">updating…</em>}</span>
+                <label>
+                  What matters most?{" "}
+                  <select value={priority} onChange={(e) => setPriority(e.target.value as Priority)} aria-label="Ranking priority">
+                    <option value="Balanced">Balanced</option>
+                    <option value="BestFit">Best course fit</option>
+                    <option value="LowestCost">Lowest cost</option>
+                  </select>
+                </label>
                 <label><input type="checkbox" checked={hideIneligible} onChange={(e) => setHideIneligible(e.target.checked)} /> Hide courses I can't apply to</label>
+              </div>
+              <div className="legend">
+                <b>Eligible</b> = every requirement published and met · <b>Check requirements</b> = nothing rules you out, but something isn't published or you haven't entered it · <b>Reach</b> = close to a minimum
               </div>
               {!data.fitAvailable && <div className="notice">Course-fit scoring is temporarily unavailable, so courses are ranked on eligibility and cost only.</div>}
               <Compare items={compared} onClear={() => setCompareIds([])} />
@@ -104,6 +127,7 @@ export default function App() {
                               onToggleCompare={() => toggleCompare(r.course.id)} />
                 ))}
               </div>
+              <Helpful key={data.catalogLoadedAt + data.priority} context="shortlist" label="Was this shortlist useful?" />
             </>
           )}
         </section>
@@ -112,6 +136,10 @@ export default function App() {
           <Chat profile={submitted ? profile : null} />
         </aside>
       </main>
+      <footer className="site-footer">
+        No sign-up. Your grades and budget stay in your browser and are only sent to calculate your shortlist; they are never stored.
+        We keep anonymous usage counts to improve Compass. Always confirm fees and requirements on the official page before you apply.
+      </footer>
     </div>
   );
 }

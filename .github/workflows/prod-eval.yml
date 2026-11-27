@@ -1,0 +1,23 @@
+name: Production decision checks
+
+# Runs the golden student profiles against the live API every night.
+# Fails (and emails the owner) if an invariant breaks: e.g. "Eligible" with an unmet check,
+# a check without a source, or ineligible courses ranked above eligible ones.
+on:
+  schedule:
+    - cron: "43 2 * * *"
+  workflow_dispatch:
+
+jobs:
+  golden:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults: { run: { working-directory: ai } }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12" }
+      - run: pip install httpx==0.28.1
+      - name: Wake the API
+        run: curl --silent --retry 3 --retry-delay 20 --retry-all-errors --max-time 90 -o /dev/null https://compass-api-38m9.onrender.com/health/ready || true
+      - run: python -m evals.golden_profiles https://compass-api-38m9.onrender.com

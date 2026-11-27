@@ -19,7 +19,7 @@ public static class ChatEndpoints
         return app;
     }
 
-    private static async Task ProxyAsync(HttpContext ctx, IHttpClientFactory factory, ILogger<ChatStreamLog> log, CancellationToken ct)
+    private static async Task ProxyAsync(HttpContext ctx, IHttpClientFactory factory, ILogger<ChatStreamLog> log, UsageTracker usage, CancellationToken ct)
     {
         if (ctx.Request.ContentLength is null or 0)
         {
@@ -61,6 +61,7 @@ public static class ChatEndpoints
                 return;
             }
 
+            usage.Track("chat", ctx);
             ctx.Response.ContentType = "text/event-stream";
             ctx.Response.Headers.CacheControl = "no-cache";
             ctx.Response.Headers["X-Accel-Buffering"] = "no";

@@ -5,7 +5,7 @@ using Compass.Domain;
 
 namespace Compass.Api.Endpoints;
 
-public sealed record RecommendationRequest(StudentProfile Profile)
+public sealed record RecommendationRequest(StudentProfile Profile, Priority? Priority = null)
 {
     public Dictionary<string, string[]> Validate()
     {
@@ -23,7 +23,9 @@ public sealed record RecommendationRequest(StudentProfile Profile)
 public sealed record RecommendationResponse(
     IReadOnlyList<Recommendation> Items,
     bool FitAvailable,
-    DateTimeOffset CatalogLoadedAt);
+    DateTimeOffset CatalogLoadedAt,
+    string TargetIntake,
+    Priority Priority);
 
 public static class RecommendationEndpoints
 {
@@ -44,8 +46,11 @@ public static class RecommendationEndpoints
         FitScoreService fit,
         RecommendationEngine engine,
         TimeProvider time,
+        UsageTracker usage,
+        HttpContext http,
         CancellationToken ct)
     {
+        var started = time.GetTimestamp();
         var errors = req.Validate();
         if (errors.Count > 0) return Results.ValidationProblem(errors);
 
@@ -57,12 +62,23 @@ public static class RecommendationEndpoints
             snapshot.MonthlyLivingByCity,
             snapshot.OneOffEur,
             fitResult.Scores,
-            DateOnly.FromDateTime(time.GetUtcNow().UtcDateTime));
+            DateOnly.FromDateTime(time.GetUtcNow().UtcDateTime),
+            req.Priority ?? Priority.Balanced);
 
         try
         {
             var items = engine.Recommend(profile, snapshot.Courses, ctx);
-            return Results.Ok(new RecommendationResponse(items, fitResult.Available, snapshot.LoadedAt));
+            usage.Track("search", http, new
+            {
+                ms = (int)time.GetElapsedTime(started).TotalMilliseconds,
+                priority = ctx.Priority.ToString(),
+                results = items.Count,
+                eligible = items.Count(i => i.Eligibility.Status != EligibilityStatus.NotEligible),
+                fitAvailable = fitResult.Available,
+                interests = profile.Interests.Count,
+            });
+            return Results.Ok(new RecommendationResponse(items, fitResult.Available, snapshot.LoadedAt,
+                AcademicYear.UpcomingIntake(ctx.Today), ctx.Priority));
         }
         catch (InvalidOperationException ex)
         {

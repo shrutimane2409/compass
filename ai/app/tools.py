@@ -14,8 +14,11 @@ from . import retrieval
 from .config import get_settings
 from .embeddings import EmbeddingQuotaExhausted
 
-MAX_RESULTS = 8
-MAX_CHUNK_CHARS = 1200
+# Kept small: tool results are sent back to the LLM, and free tiers limit tokens per minute.
+MAX_RESULTS = 5
+MAX_REASONS = 4
+MAX_CHUNKS = 4
+MAX_CHUNK_CHARS = 700
 
 
 class ProfileArgs(BaseModel):
@@ -45,7 +48,7 @@ def summarise_recommendations(payload: dict) -> dict:
             "tags": r["tags"],
             "totalCostEur": cost["total"],
             "costBreakdownEur": {"tuition": cost["tuition"], "living": cost["living"], "oneOff": cost["oneOff"]},
-            "reasons": r["reasons"],
+            "reasons": r["reasons"][:MAX_REASONS],
             "sourceUrl": c["sourceUrl"],
             "verifiedAt": c["verifiedAt"],
         })
@@ -89,7 +92,7 @@ def search_sources(query: str, site: str | None = None) -> str:
     return json.dumps({"results": [
         {"sourceUrl": c.source_url, "title": c.title, "fetchedAt": c.fetched_at,
          "similarity": c.similarity, "text": c.content[:MAX_CHUNK_CHARS]}
-        for c in chunks
+        for c in chunks[:MAX_CHUNKS]
     ]})
 
 

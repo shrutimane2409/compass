@@ -19,6 +19,7 @@ from langgraph.graph.message import add_messages
 from pydantic import BaseModel, Field
 
 from .config import get_settings
+from .grounding import source_urls, verify
 from .llm import LLMUnavailable, with_tools
 from .tools import ALL_TOOLS
 
@@ -141,6 +142,10 @@ async def stream_chat(req: ChatRequest) -> AsyncIterator[str]:
         return
 
     state = {"messages": to_messages(req), "steps": 0, "context": profile_context(req.profile)}
+    answer: list[str] = []
+    retrieved: set[str] = set()
+    used_tools = False
+    streamed_since_update = False  # some providers return the whole reply without streaming tokens
     try:
         async for mode, data in graph.astream(state, stream_mode=["messages", "updates"]):
             if mode == "messages":
@@ -148,12 +153,26 @@ async def stream_chat(req: ChatRequest) -> AsyncIterator[str]:
                 if meta.get("langgraph_node") in ("model", "final") and isinstance(chunk, AIMessageChunk):
                     text = text_of(chunk.content)
                     if text:
+                        answer.append(text)
+                        streamed_since_update = True
                         yield sse("token", {"text": text})
             elif mode == "updates":
                 for node, update in data.items():
-                    if node == "model" and update:
-                        for call in getattr(update["messages"][-1], "tool_calls", []) or []:
+                    if node in ("model", "final") and update:
+                        last = update["messages"][-1]
+                        calls = getattr(last, "tool_calls", []) or []
+                        for call in calls:
                             yield sse("tool", {"name": call["name"]})
+                        text = text_of(last.content)
+                        if not calls and text and not streamed_since_update:
+                            answer.append(text)
+                            yield sse("token", {"text": text})
+                        streamed_since_update = False
+                    elif node == "tools" and update:
+                        used_tools = True
+                        for msg in update["messages"]:
+                            retrieved |= source_urls(str(msg.content))
+        yield sse("verification", verify("".join(answer), retrieved, used_tools))
         yield sse("done", {})
     except Exception:
         log.exception("Chat stream failed")

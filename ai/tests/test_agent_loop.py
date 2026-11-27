@@ -64,3 +64,20 @@ def test_model_calls_tool_then_answers():
 def test_step_limit_stops_tool_loops():
     model = ScriptedModel(messages=iter([tool_call(1), tool_call(2), AIMessage(content="Best answer so far.")]))
     assert run(build_graph(model, [search_sources], max_steps=2)) == [["model"], ["tools"], ["model"], ["tools"], ["final"]]
+
+
+def test_stream_reports_citation_verification(monkeypatch):
+    import app.agent as agent
+    from app.agent import ChatRequest, stream_chat
+
+    model = ScriptedModel(messages=iter([tool_call(1), AIMessage(content="Fees are listed (Source: https://example.ie/fees).")]))
+    monkeypatch.setattr(agent, "get_graph", lambda: build_graph(model, [search_sources], max_steps=4))
+
+    async def collect():
+        return [e async for e in stream_chat(ChatRequest(message="What are the fees?"))]
+
+    events = asyncio.run(collect())
+    verification = next(e for e in events if e.startswith("event: verification"))
+    payload = json.loads(verification.split("data: ", 1)[1])
+    assert payload["grounded"] is True
+    assert payload["verified"] == ["https://example.ie/fees"]
