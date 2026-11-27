@@ -39,5 +39,9 @@ services:
         sync: false
       - key: Admin__Key          # enables GET /api/admin/stats (owner-only usage metrics)
         sync: false
+      - key: Auth__GoogleClientId   # enables Sign in with Google (OAuth web client id)
+        sync: false
+      - key: Auth__JwtSecret        # 32+ random characters for session tokens
+        sync: false
       - key: ForwardedHeaders__Enabled
         value: "true"

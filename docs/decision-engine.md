@@ -67,19 +67,35 @@ no course is tagged *Good fit*, and the UI says ranking is on eligibility and co
 
 ## 6. Ranking
 
-    score = w_fit × fit + w_afford × affordability + w_elig × eligibility
+    score = w_fit × fit + w_afford × affordability + w_elig × eligibility + w_rep × reputation
 
 | Component | Value |
 |---|---|
 | fit | 0–1 from §5 |
 | affordability | Affordable: 0.7–1.0 by budget headroom (full score at 25% left over) · Stretch: 0.35 · Over budget: 0 |
 | eligibility | Eligible 1.0 · LikelyEligible 0.75 · Borderline 0.4 · NotEligible 0 |
+| reputation | From the university's latest QS rank (else THE), in coarse bands: top 100 = 1.0 · ≤200 = 0.85 · ≤300 = 0.7 · ≤400 = 0.6 · ≤600 = 0.45 · ≤800 = 0.3 · beyond = 0.15 · unranked = 0.1 |
 
-| Priority | w_fit | w_afford | w_elig |
-|---|---|---|---|
-| Balanced (default) | 0.50 | 0.30 | 0.20 |
-| Best course fit | 0.70 | 0.15 | 0.15 |
-| Lowest cost | 0.25 | 0.60 | 0.15 |
+| Priority | w_fit | w_afford | w_elig | w_rep |
+|---|---|---|---|---|
+| Balanced (default) | 0.50 | 0.30 | 0.20 | 0 |
+| Best course fit | 0.70 | 0.15 | 0.15 | 0 |
+| Lowest cost | 0.25 | 0.60 | 0.15 | 0 |
+| University reputation | 0.30 | 0.25 | 0.15 | 0.30 |
+
+**Why rankings are opt-in.** Students anchor on rankings whether or not a tool shows them, so Compass shows
+both QS and THE positions (with edition and source) on every course. But ranking everyone by reputation by default
+would herd every student toward the same two universities, so reputation only affects the order when the student
+chooses that priority. Bands are coarse because a few league-table places are noise. The UI notes that world
+rankings mostly measure research and reputation, not teaching quality or job outcomes.
+
+## 6b. Scholarships
+
+Rules only, never a promise of an award. A scholarship applies to the courses the student is considering (saved
+courses, else every course they're eligible for) when the university and field match and any published minimum
+grade is met. *Considered automatically* = assessed at application with no extra form (still not guaranteed);
+*Worth applying for* = needs a separate application, usually after an offer, often competitive. Every entry carries
+its official source URL and check date.
 
 Not-eligible courses always sort last. Ties break by lower total cost, then course id, so results are deterministic.
 Every result returns its score breakdown, and the UI shows it under "Why this result".

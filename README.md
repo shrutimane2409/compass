@@ -25,6 +25,13 @@ Compass puts it in one place, computes the real cost, and shows its reasoning.
 - **Compare** up to three courses side by side
 - **Ask Compass**: a chat agent that answers from the student's shortlist and from official pages, with links
 - **Freshness**: every fact has a source URL and verification date; stale data is flagged
+- **University rankings** (QS and THE, with edition and source) shown on every course; an opt-in
+  *University reputation* priority lets students who care about rankings rank by them
+- **Scholarship matcher**: official scholarships matched to the courses a student is considering, split into
+  "considered automatically" and "worth applying for", each with how to apply and a link
+- **Optional accounts** (Sign in with Google): saved profile, saved courses, an application tracker with document
+  checklists, and a pre-arrival checklist (visa, IRP, PPS, bank). Guests can use everything except saving.
+- **Your data, your control**: download everything stored as JSON, or delete the account in one click
 
 ## Architecture
 

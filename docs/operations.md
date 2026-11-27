@@ -93,3 +93,16 @@ DELETE FROM usage_events WHERE (props->>'synthetic')::boolean;
 
 GitHub emails the repo owner when a scheduled run fails. Render's free tier gives 750 instance hours a month per
 workspace; the uptime schedule uses about 430 for the API.
+
+## Rankings and scholarships
+
+Both live in CSV with a source URL and check date per row: `data/rankings.csv`, `data/scholarships.csv`.
+Load or refresh with `python -m scripts.load_extras` (from `ai/`). QS publishes in June and THE in late September or
+October: add the new edition's rows, keep the old ones (the API shows the latest edition per source).
+Scholarship pages are also in `data/sources.txt`, so the weekly refresh flags when they change.
+
+## Accounts
+
+Sign-in needs two Render env vars on `compass-api`: `Auth__GoogleClientId` (OAuth web client id, with the web
+app's origin in *Authorized JavaScript origins*) and `Auth__JwtSecret` (32+ random characters). Without them the site
+works in guest mode and the sign-in button is hidden. Rotating `Auth__JwtSecret` signs everyone out.

@@ -103,7 +103,11 @@ A what-if change (budget, grade) reuses the cached fit scores, so it never leave
 ## 7. Security and abuse
 - Per-IP rate limits: general API 60/min, chat 10/min. Protects the free LLM quota.
 - Agent tools are read only. No tool can write data or call arbitrary URLs.
-- Anonymous sessions in the MVP. The profile holds only what recommendations need.
+- Guests are anonymous. Accounts are optional: Google Identity Services issues an ID token in the browser; the API
+  verifies it against Google's published keys (issuer, audience, expiry, verified email) and issues its own
+  HS256 session token (30 days) used as a bearer token, since the web app and API are on different sites.
+- Every account query is scoped to the user id in the token; deleting the user cascades to all saved data.
+  Students can export everything stored about them as JSON.
 - Secrets come from environment variables; nothing sensitive is committed.
 - Behind a managed proxy, the client IP is read from `X-Forwarded-For`.
 
