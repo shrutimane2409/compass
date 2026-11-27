@@ -86,7 +86,10 @@ export function CourseCard({ rec, rank, inrPerEur, compared, onToggleCompare, co
       </details>
 
       <footer>
-        <a href={c.sourceUrl} target="_blank" rel="noreferrer">Official course page ↗</a>
+        <a href={c.entrySourceUrl ?? c.sourceUrl} target="_blank" rel="noreferrer">Official course page ↗</a>
+        {c.entrySourceUrl && c.entrySourceUrl !== c.sourceUrl && (
+          <a href={c.sourceUrl} target="_blank" rel="noreferrer">Fee source ↗</a>
+        )}
         <span>Verified {verified}</span>
         {account.me && (tracked
           ? <a href="#/applications">In your applications</a>

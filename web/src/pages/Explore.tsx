@@ -62,7 +62,12 @@ export function Explore({ form, setForm, submitted, submit, data, loading, error
                 ? " University rankings are now part of the order."
                 : " Rankings are shown for information; choose “University reputation” to rank by them."}
             </div>
-            {!data.fitAvailable && <div className="notice">Course-fit scoring is temporarily unavailable, so courses are ranked on eligibility and cost only.</div>}
+            {!data.fitAvailable && (
+              <div className="notice">
+                Course-fit scoring is waking up (Compass runs on free hosting), so for now courses are ranked on eligibility and cost.
+                This list refreshes automatically in a few seconds.
+              </div>
+            )}
             <Compare items={compared} onClear={() => setCompareIds([])} />
             <div className="cards">
               {visible.map((r, i) => (

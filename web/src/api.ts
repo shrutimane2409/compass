@@ -167,3 +167,8 @@ export async function exportMyData(): Promise<void> {
   a.click();
   URL.revokeObjectURL(url);
 }
+
+/** Wakes the free-tier AI service early. Failures don't matter. */
+export function warmup(): void {
+  fetch(`${API_BASE}/api/warmup`, { method: "POST" }).catch(() => {});
+}

@@ -78,7 +78,7 @@ function AppCard({ app, course }: { app: Application; course: Course | undefined
                       onBlur={() => notes !== (app.notes ?? "") && updateApplication({ ...app, notes })} />
           </label>
           <div className="row-between small">
-            {course && <a href={course.sourceUrl} target="_blank" rel="noreferrer">Course page ↗</a>}
+            {course && <a href={course.entrySourceUrl ?? course.sourceUrl} target="_blank" rel="noreferrer">Course page ↗</a>}
             <button type="button" className="link small danger" onClick={() => untrack(app.courseId)}>Remove</button>
           </div>
         </div>

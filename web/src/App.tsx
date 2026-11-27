@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useAccount } from "./account";
-import { getCourses, getExchangeRate, getRecommendations } from "./api";
+import { getCourses, getExchangeRate, getRecommendations, warmup } from "./api";
 import { Icon, Logo } from "./components/Icons";
 import type { FormState } from "./components/ProfileForm";
 import { SECTIONS, Sidebar, type Section } from "./components/Sidebar";
@@ -46,6 +46,7 @@ export default function App() {
   const [priority, setPriority] = useState<Priority>("Balanced");
   const [fx, setFx] = useState<ExchangeRate | null>(null);
   const [courses, setCourses] = useState<Map<number, Course>>(new Map());
+  const [retry, setRetry] = useState(0);
   const inflight = useRef<AbortController | null>(null);
   const restored = useRef(false);
 
@@ -57,6 +58,7 @@ export default function App() {
 
   // Official ECB reference rate for INR, so the rupee budget converts at a real, dated rate.
   useEffect(() => {
+    warmup();
     getExchangeRate("INR").then((rate) => {
       if (!rate) return;
       setFx(rate);
@@ -94,7 +96,15 @@ export default function App() {
       }
     }, 250);
     return () => clearTimeout(timer);
-  }, [profile, priority, submitted]);
+  }, [profile, priority, submitted, retry]);
+
+  // If AI fit scoring was asleep, the request above woke it: ask again shortly (up to 3 times).
+  useEffect(() => {
+    if (!data || data.fitAvailable || retry >= 3) return;
+    const t = setTimeout(() => setRetry((r) => r + 1), 20000);
+    return () => clearTimeout(t);
+  }, [data, retry]);
+  useEffect(() => { setRetry(0); }, [profile, priority]);
 
   const shared: Shared = {
     form, setForm, submitted, submit: () => setSubmitted(true), data, loading, error, priority, setPriority, fx, courses,

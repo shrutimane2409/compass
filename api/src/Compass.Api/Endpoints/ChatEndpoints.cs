@@ -16,7 +16,34 @@ public static class ChatEndpoints
     public static IEndpointRouteBuilder MapChatEndpoints(this IEndpointRouteBuilder app)
     {
         app.MapPost("/api/chat", ProxyAsync).RequireRateLimiting(RateLimits.Chat);
+        app.MapPost("/api/warmup", Warmup).RequireRateLimiting(RateLimits.Api);
         return app;
+    }
+
+    private static long _lastWarmup;
+
+    /// <summary>
+    /// The free-tier AI service sleeps when idle and takes ~30-60 s to wake. The web app calls this on page load,
+    /// so the AI service is usually awake by the time the student submits the form. Fire and forget, at most once a minute.
+    /// </summary>
+    private static IResult Warmup(IHttpClientFactory factory, ILogger<ChatStreamLog> log, TimeProvider time)
+    {
+        var now = time.GetUtcNow().ToUnixTimeSeconds();
+        var last = Interlocked.Read(ref _lastWarmup);
+        if (now - last < 60 || Interlocked.CompareExchange(ref _lastWarmup, now, last) != last) return Results.Accepted();
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(90));
+                using var res = await factory.CreateClient(StreamClient).GetAsync("/health", cts.Token);
+            }
+            catch (Exception ex)
+            {
+                log.LogInformation("AI warm-up did not complete: {Message}", ex.Message);
+            }
+        });
+        return Results.Accepted();
     }
 
     private static async Task ProxyAsync(HttpContext ctx, IHttpClientFactory factory, ILogger<ChatStreamLog> log, UsageTracker usage, CancellationToken ct)

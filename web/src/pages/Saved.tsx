@@ -36,7 +36,7 @@ export function Saved({ data, courses }: Shared) {
               {r && <span className={`tag t-${r.tags[0]}`}>{TAG_LABEL[r.tags[0]]}</span>}
             </div>
             <div className="row-between small">
-              <a href={c!.sourceUrl} target="_blank" rel="noreferrer">Official page ↗</a>
+              <a href={c!.entrySourceUrl ?? c!.sourceUrl} target="_blank" rel="noreferrer">Official page ↗</a>
               {account.application(s.courseId)
                 ? <a href="#/applications">In your applications</a>
                 : <button type="button" className="link small" onClick={() => account.track(s.courseId)}>Track application</button>}
