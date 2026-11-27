@@ -1,5 +1,5 @@
 import { createSseParser } from "./sse";
-import type { ChatTurn, ExchangeRate, Priority, RecommendationResponse, StudentProfile, Verification } from "./types";
+import type { Application, ChatTurn, Course, ExchangeRate, Me, Priority, RecommendationResponse, ScholarshipMatch, StudentProfile, User, Verification } from "./types";
 
 // Empty in development (Vite proxies /api). Set VITE_API_BASE when the API is on another host.
 const API_BASE = (import.meta.env.VITE_API_BASE ?? "").replace(/\/$/, "");
@@ -16,7 +16,11 @@ function session(): string {
   }
   return sessionId;
 }
-const sid = () => ({ "X-Session-Id": session() });
+// Session token from Google sign-in (bearer, because the API is on another site). Empty for guests.
+let authToken = "";
+export const setAuthToken = (token: string) => { authToken = token; };
+const sid = (): Record<string, string> =>
+  authToken ? { "X-Session-Id": session(), Authorization: `Bearer ${authToken}` } : { "X-Session-Id": session() };
 
 export class ApiError extends Error {
   constructor(message: string, public status: number) {
@@ -122,4 +126,44 @@ export function sendHelpful(helpful: boolean, context: "shortlist" | "chat"): vo
     body: JSON.stringify({ helpful, context }),
     keepalive: true,
   }).catch(() => {});
+}
+
+async function call<T>(method: string, path: string, body?: unknown): Promise<T> {
+  const res = await fetch(`${API_BASE}${path}`, {
+    method,
+    headers: { "Content-Type": "application/json", ...sid() },
+    body: body === undefined ? undefined : JSON.stringify(body),
+  });
+  if (res.status === 429) throw new ApiError("Too many requests. Wait a moment and try again.", 429);
+  if (!res.ok) throw new ApiError(await problemMessage(res), res.status);
+  return (res.status === 204 ? undefined : await res.json()) as T;
+}
+
+export const getAuthConfig = () =>
+  call<{ enabled: boolean; googleClientId: string | null }>("GET", "/api/auth/config").catch(() => ({ enabled: false, googleClientId: null }));
+export const signInWithGoogle = (credential: string) =>
+  call<{ token: string; expiresAt: string; user: User }>("POST", "/api/auth/google", { credential });
+export const getMe = () => call<Me>("GET", "/api/me");
+export const saveProfile = (profile: StudentProfile, priority: Priority) => call<void>("PUT", "/api/me/profile", { profile, priority });
+export const saveCourse = (courseId: number, note?: string) => call<void>("PUT", `/api/me/saved/${courseId}`, { note: note ?? null });
+export const unsaveCourse = (courseId: number) => call<void>("DELETE", `/api/me/saved/${courseId}`);
+export const saveApplication = (a: Pick<Application, "courseId" | "status" | "documents" | "notes">) =>
+  call<void>("PUT", `/api/me/applications/${a.courseId}`, { status: a.status, documents: a.documents, notes: a.notes });
+export const deleteApplication = (courseId: number) => call<void>("DELETE", `/api/me/applications/${courseId}`);
+export const setChecklistItem = (itemId: string, done: boolean) => call<void>("PUT", `/api/me/checklist/${itemId}`, { done });
+export const deleteAccount = () => call<void>("DELETE", "/api/me");
+export const getCourses = () => call<Course[]>("GET", "/api/courses");
+export const matchScholarships = (profile: StudentProfile, courseIds: number[] | null) =>
+  call<ScholarshipMatch[]>("POST", "/api/scholarships/match", { profile, courseIds });
+
+/** Downloads everything Compass stores about the signed-in student as a JSON file. */
+export async function exportMyData(): Promise<void> {
+  const res = await fetch(`${API_BASE}/api/me/export`, { headers: sid() });
+  if (!res.ok) throw new ApiError(await problemMessage(res), res.status);
+  const url = URL.createObjectURL(await res.blob());
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = "compass-my-data.json";
+  a.click();
+  URL.revokeObjectURL(url);
 }

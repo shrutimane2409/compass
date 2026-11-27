@@ -36,7 +36,8 @@ public sealed record Course(
     decimal? MinToeflNew = null,
     bool BackgroundsOpen = false,
     string? EntrySourceUrl = null,
-    string? GradeSourceUrl = null)
+    string? GradeSourceUrl = null,
+    DateOnly? ApplicationDeadline = null)
 {
     /// <summary>Published league-table positions for the course's university (information, plus the optional Reputation priority).</summary>
     public IReadOnlyList<UniversityRank> Rankings { get; init; } = [];

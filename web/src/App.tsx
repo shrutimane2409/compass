@@ -1,56 +1,78 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { getExchangeRate, getRecommendations } from "./api";
-import { Chat } from "./components/Chat";
-import { Compare } from "./components/Compare";
-import { CourseCard } from "./components/CourseCard";
-import { Helpful } from "./components/Helpful";
-import { gradePercent, ProfileForm, type FormState } from "./components/ProfileForm";
-import { WhatIf } from "./components/WhatIf";
-import type { ExchangeRate, Priority, RecommendationResponse, StudentProfile } from "./types";
+import { useAccount } from "./account";
+import { getCourses, getExchangeRate, getRecommendations } from "./api";
+import { Icon, Logo } from "./components/Icons";
+import type { FormState } from "./components/ProfileForm";
+import { SECTIONS, Sidebar, type Section } from "./components/Sidebar";
+import { Applications } from "./pages/Applications";
+import { Dashboard } from "./pages/Dashboard";
+import { Explore } from "./pages/Explore";
+import { Prearrival } from "./pages/Prearrival";
+import { Profile } from "./pages/Profile";
+import { Saved } from "./pages/Saved";
+import { Scholarships } from "./pages/Scholarships";
+import { fromProfile, INITIAL_FORM, toProfile } from "./profile";
+import type { Course, ExchangeRate, Priority, RecommendationResponse } from "./types";
 
-const INITIAL: FormState = {
-  gradeMode: "percent",
-  grade: 70,
-  background: "computer-science",
-  englishTest: "none",
-  englishScore: 7,
-  workYears: 0,
-  budgetLakh: 35,
-  inrPerEur: 100,
-  interests: ["machine learning"],
-};
+function readSection(): Section {
+  const id = location.hash.replace(/^#\//, "");
+  return SECTIONS.some((s) => s.id === id) ? (id as Section) : "dashboard";
+}
 
-function toProfile(f: FormState): StudentProfile {
-  return {
-    gradePercent: gradePercent(f),
-    background: f.background,
-    english: f.englishTest === "none" ? null : { test: f.englishTest, score: f.englishScore },
-    workYears: f.workYears,
-    budgetEur: Math.max(1, Math.round((f.budgetLakh * 100000) / f.inrPerEur)),
-    interests: f.interests,
-  };
+/** Shared state for every section, kept here so moving between sections never loses a shortlist. */
+export interface Shared {
+  form: FormState;
+  setForm: (f: FormState) => void;
+  submitted: boolean;
+  submit: () => void;
+  data: RecommendationResponse | null;
+  loading: boolean;
+  error: string;
+  priority: Priority;
+  setPriority: (p: Priority) => void;
+  fx: ExchangeRate | null;
+  courses: Map<number, Course>;
 }
 
 export default function App() {
-  const [form, setForm] = useState<FormState>(INITIAL);
+  const account = useAccount();
+  const [section, setSection] = useState<Section>(readSection);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [form, setForm] = useState<FormState>(INITIAL_FORM);
   const [submitted, setSubmitted] = useState(false);
   const [data, setData] = useState<RecommendationResponse | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const [hideIneligible, setHideIneligible] = useState(true);
-  const [compareIds, setCompareIds] = useState<number[]>([]);
   const [priority, setPriority] = useState<Priority>("Balanced");
   const [fx, setFx] = useState<ExchangeRate | null>(null);
+  const [courses, setCourses] = useState<Map<number, Course>>(new Map());
   const inflight = useRef<AbortController | null>(null);
+  const restored = useRef(false);
+
+  useEffect(() => {
+    const onHash = () => { setSection(readSection()); window.scrollTo(0, 0); };
+    window.addEventListener("hashchange", onHash);
+    return () => window.removeEventListener("hashchange", onHash);
+  }, []);
 
   // Official ECB reference rate for INR, so the rupee budget converts at a real, dated rate.
   useEffect(() => {
     getExchangeRate("INR").then((rate) => {
       if (!rate) return;
       setFx(rate);
-      setForm((f) => (f.inrPerEur === INITIAL.inrPerEur ? { ...f, inrPerEur: Math.round(rate.perEur * 100) / 100 } : f));
+      setForm((f) => (f.inrPerEur === INITIAL_FORM.inrPerEur ? { ...f, inrPerEur: Math.round(rate.perEur * 100) / 100 } : f));
     });
+    getCourses().then((list) => setCourses(new Map(list.map((c) => [c.id, c])))).catch(() => {});
   }, []);
+
+  // A returning student's saved profile fills the form and produces their shortlist straight away.
+  useEffect(() => {
+    if (restored.current || !account.me?.profile) return;
+    restored.current = true;
+    setForm((f) => fromProfile(account.me!.profile!, f.inrPerEur));
+    setPriority(account.me.priority);
+    setSubmitted(true);
+  }, [account.me]);
 
   const profile = useMemo(() => toProfile(form), [form]);
 
@@ -74,72 +96,36 @@ export default function App() {
     return () => clearTimeout(timer);
   }, [profile, priority, submitted]);
 
-  const items = data?.items ?? [];
-  const visible = hideIneligible ? items.filter((r) => r.eligibility.status !== "NotEligible") : items;
-  const compared = compareIds.map((id) => items.find((r) => r.course.id === id)).filter((r) => r !== undefined);
-  const toggleCompare = (id: number) =>
-    setCompareIds((ids) => (ids.includes(id) ? ids.filter((x) => x !== id) : [...ids, id].slice(-3)));
+  const shared: Shared = {
+    form, setForm, submitted, submit: () => setSubmitted(true), data, loading, error, priority, setPriority, fx, courses,
+  };
+  const title = SECTIONS.find((s) => s.id === section)?.label ?? "";
 
   return (
-    <div className="app">
-      <header className="top">
-        <div className="brand"><span className="logo">◎</span> Compass</div>
-        <p>Independent course matching for Indian students choosing a master's in Ireland. No commissions, every fact sourced.</p>
+    <div className="shell">
+      <header className="mobile-bar">
+        <button type="button" className="icon-btn" onClick={() => setMenuOpen(!menuOpen)} aria-label="Open menu" aria-expanded={menuOpen}>
+          <Icon name="menu" />
+        </button>
+        <span className="brand"><Logo /> Compass</span>
+        <span className="mobile-title">{title}</span>
       </header>
-
-      <main className="layout">
-        <aside className="left">
-          <ProfileForm value={form} onChange={setForm} onSubmit={() => setSubmitted(true)} submitted={submitted} fx={fx} />
-          {data && <WhatIf budgetLakh={form.budgetLakh} onBudget={(v) => setForm({ ...form, budgetLakh: v })} items={items} />}
-        </aside>
-
-        <section className="center">
-          {!submitted && (
-            <div className="panel empty">
-              <h2>Your shortlist will appear here</h2>
-              <p>Fill in your profile and press <b>Find my courses</b>. You'll see which courses you can apply to, what they really cost, and why.</p>
-            </div>
-          )}
-          {error && <div className="panel error">{error}</div>}
-          {data && (
-            <>
-              <div className="toolbar">
-                <span>{visible.length} courses for the {data.targetIntake} intake {loading && <em className="loading">updating…</em>}</span>
-                <label>
-                  What matters most?{" "}
-                  <select value={priority} onChange={(e) => setPriority(e.target.value as Priority)} aria-label="Ranking priority">
-                    <option value="Balanced">Balanced</option>
-                    <option value="BestFit">Best course fit</option>
-                    <option value="LowestCost">Lowest cost</option>
-                  </select>
-                </label>
-                <label><input type="checkbox" checked={hideIneligible} onChange={(e) => setHideIneligible(e.target.checked)} /> Hide courses I can't apply to</label>
-              </div>
-              <div className="legend">
-                <b>Eligible</b> = every requirement published and met · <b>Check requirements</b> = nothing rules you out, but something isn't published or you haven't entered it · <b>Reach</b> = close to a minimum
-              </div>
-              {!data.fitAvailable && <div className="notice">Course-fit scoring is temporarily unavailable, so courses are ranked on eligibility and cost only.</div>}
-              <Compare items={compared} onClear={() => setCompareIds([])} />
-              <div className="cards">
-                {visible.map((r, i) => (
-                  <CourseCard key={r.course.id} rec={r} rank={i + 1} inrPerEur={form.inrPerEur}
-                              compared={compareIds.includes(r.course.id)} compareDisabled={compareIds.length >= 3}
-                              onToggleCompare={() => toggleCompare(r.course.id)} />
-                ))}
-              </div>
-              <Helpful key={data.catalogLoadedAt + data.priority} context="shortlist" label="Was this shortlist useful?" />
-            </>
-          )}
-        </section>
-
-        <aside className="right">
-          <Chat profile={submitted ? profile : null} />
-        </aside>
+      <Sidebar section={section} open={menuOpen} onClose={() => setMenuOpen(false)} />
+      <main className="content">
+        {account.error && <div className="notice">{account.error}</div>}
+        {section === "dashboard" && <Dashboard {...shared} />}
+        {section === "explore" && <Explore {...shared} />}
+        {section === "saved" && <Saved {...shared} />}
+        {section === "applications" && <Applications {...shared} />}
+        {section === "scholarships" && <Scholarships {...shared} />}
+        {section === "prearrival" && <Prearrival />}
+        {section === "profile" && <Profile {...shared} />}
+        <footer className="site-footer">
+          Guests: nothing about you is stored. Signed in: Compass stores only what you choose to save, and you can download or
+          delete it any time from Profile. Anonymous usage counts help improve Compass. Always confirm fees and requirements on
+          the official page before you apply.
+        </footer>
       </main>
-      <footer className="site-footer">
-        No sign-up. Your grades and budget stay in your browser and are only sent to calculate your shortlist; they are never stored.
-        We keep anonymous usage counts to improve Compass. Always confirm fees and requirements on the official page before you apply.
-      </footer>
     </div>
   );
 }

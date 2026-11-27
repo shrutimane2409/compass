@@ -1,4 +1,5 @@
 using Compass.Api.Infrastructure;
+using Microsoft.Extensions.Configuration;
 using Microsoft.IdentityModel.JsonWebTokens;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
@@ -43,7 +44,7 @@ public class AuthServiceTests
     [Fact]
     public void Short_secret_is_refused()
     {
-        var config = new Microsoft.Extensions.Configuration.ConfigurationBuilder()
+        var config = new ConfigurationBuilder()
             .AddInMemoryCollection(new Dictionary<string, string?> { ["Auth:JwtSecret"] = "too-short" }).Build();
         Assert.Throws<InvalidOperationException>(() => AuthService.SigningKey(config));
     }

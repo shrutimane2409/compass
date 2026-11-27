@@ -37,10 +37,11 @@ interface Props {
   onChange: (next: FormState) => void;
   onSubmit: () => void;
   submitted: boolean;
+  submitLabel?: string;
   fx: ExchangeRate | null;
 }
 
-export function ProfileForm({ value: f, onChange, onSubmit, submitted, fx }: Props) {
+export function ProfileForm({ value: f, onChange, onSubmit, submitted, fx, submitLabel }: Props) {
   const [interestDraft, setInterestDraft] = useState("");
   const set = <K extends keyof FormState>(k: K, v: FormState[K]) => onChange({ ...f, [k]: v });
 
@@ -135,7 +136,7 @@ export function ProfileForm({ value: f, onChange, onSubmit, submitted, fx }: Pro
         </div>
       </div>
 
-      <button className="primary" type="submit">{submitted ? "Update shortlist" : "Find my courses"}</button>
+      <button className="primary" type="submit">{submitLabel ?? (submitted ? "Update shortlist" : "Find my courses")}</button>
     </form>
   );
 }
