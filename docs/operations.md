@@ -62,6 +62,18 @@ FROM course_feedback f JOIN courses c ON c.id = f.course_id
 WHERE f.status = 'open' ORDER BY f.created_at;
 ```
 
+## Synthetic traffic (load and monitoring tests)
+
+`python -m scripts.simulate_traffic <api> --students 30` (or the manual **Simulate traffic** workflow) plays
+randomised student sessions: searches with what-if edits, a few chats (capped), helpful votes. It prints p50/p95
+latency, status codes, 429s and AI degradation. Every request sends `X-Synthetic: 1`; those events are tagged
+`synthetic` and excluded from `/api/admin/stats` (shown separately as `syntheticEvents`). It never submits error
+reports. Clean up with:
+
+```sql
+DELETE FROM usage_events WHERE (props->>'synthetic')::boolean;
+```
+
 ## Resolving a data report
 
 1. The `Feedback triage` workflow opens a GitHub issue (label `data-report`).

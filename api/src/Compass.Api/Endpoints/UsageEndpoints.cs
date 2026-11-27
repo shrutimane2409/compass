@@ -24,6 +24,7 @@ public sealed class UsageStats
     public double? SearchP95Ms { get; set; }
     public long ReportsOpen { get; set; }
     public long ReportsTotal { get; set; }
+    public long SyntheticEvents { get; set; }
 }
 
 public static class UsageEndpoints
@@ -46,21 +47,26 @@ public static class UsageEndpoints
             var given = Encoding.UTF8.GetBytes(http.Request.Headers["X-Admin-Key"].ToString());
             if (!CryptographicOperations.FixedTimeEquals(given, Encoding.UTF8.GetBytes(key))) return Results.Unauthorized();
 
+            // Real traffic only: events sent with X-Synthetic: 1 (load tests) are counted separately.
             const string sql = """
+                WITH e AS (
+                  SELECT * FROM usage_events WHERE NOT coalesce((props->>'synthetic')::boolean, false)
+                )
                 SELECT
-                  (SELECT count(DISTINCT session_id) FROM usage_events) AS SessionsTotal,
-                  (SELECT count(DISTINCT session_id) FROM usage_events WHERE occurred_at > now() - interval '7 days') AS Sessions7d,
-                  (SELECT count(*) FROM usage_events WHERE event = 'search') AS Searches,
-                  (SELECT count(*) FROM usage_events WHERE event = 'search' AND occurred_at > now() - interval '7 days') AS Searches7d,
-                  (SELECT count(*) FROM usage_events WHERE event = 'chat') AS Chats,
-                  (SELECT count(*) FROM usage_events WHERE event = 'helpful' AND (props->>'helpful')::boolean) AS HelpfulYes,
-                  (SELECT count(*) FROM usage_events WHERE event = 'helpful' AND NOT (props->>'helpful')::boolean) AS HelpfulNo,
+                  (SELECT count(DISTINCT session_id) FROM e) AS SessionsTotal,
+                  (SELECT count(DISTINCT session_id) FROM e WHERE occurred_at > now() - interval '7 days') AS Sessions7d,
+                  (SELECT count(*) FROM e WHERE event = 'search') AS Searches,
+                  (SELECT count(*) FROM e WHERE event = 'search' AND occurred_at > now() - interval '7 days') AS Searches7d,
+                  (SELECT count(*) FROM e WHERE event = 'chat') AS Chats,
+                  (SELECT count(*) FROM e WHERE event = 'helpful' AND (props->>'helpful')::boolean) AS HelpfulYes,
+                  (SELECT count(*) FROM e WHERE event = 'helpful' AND NOT (props->>'helpful')::boolean) AS HelpfulNo,
                   (SELECT percentile_cont(0.5) WITHIN GROUP (ORDER BY (props->>'ms')::double precision)
-                     FROM usage_events WHERE event = 'search') AS SearchP50Ms,
+                     FROM e WHERE event = 'search') AS SearchP50Ms,
                   (SELECT percentile_cont(0.95) WITHIN GROUP (ORDER BY (props->>'ms')::double precision)
-                     FROM usage_events WHERE event = 'search') AS SearchP95Ms,
+                     FROM e WHERE event = 'search') AS SearchP95Ms,
                   (SELECT count(*) FROM course_feedback WHERE status = 'open') AS ReportsOpen,
-                  (SELECT count(*) FROM course_feedback) AS ReportsTotal
+                  (SELECT count(*) FROM course_feedback) AS ReportsTotal,
+                  (SELECT count(*) FROM usage_events WHERE coalesce((props->>'synthetic')::boolean, false)) AS SyntheticEvents
                 """;
             await using var conn = await db.OpenConnectionAsync(ct);
             return Results.Ok(await conn.QuerySingleAsync<UsageStats>(new CommandDefinition(sql, cancellationToken: ct)));

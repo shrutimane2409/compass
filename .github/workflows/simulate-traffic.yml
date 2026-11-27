@@ -1,0 +1,22 @@
+name: Simulate traffic
+
+# Manual load / monitoring test against production. All requests are tagged X-Synthetic: 1.
+on:
+  workflow_dispatch:
+    inputs:
+      students: { description: "Simulated students", default: "30" }
+      burst: { description: "Ignore pacing to test rate limiting (true/false)", default: "false" }
+
+jobs:
+  simulate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults: { run: { working-directory: ai } }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12" }
+      - run: pip install httpx==0.28.1
+      - run: |
+          python -m scripts.simulate_traffic https://compass-api-38m9.onrender.com \
+            --students ${{ inputs.students }} $([ "${{ inputs.burst }}" = "true" ] && echo --burst) | tee -a "$GITHUB_STEP_SUMMARY"

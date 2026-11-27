@@ -1,4 +1,5 @@
 using System.Text.Json;
+using System.Text.Json.Nodes;
 using System.Threading.Channels;
 using Npgsql;
 using NpgsqlTypes;
@@ -15,6 +16,8 @@ public sealed record UsageEvent(string Event, Guid? SessionId, string PropsJson,
 public sealed class UsageTracker(TimeProvider time)
 {
     public const string SessionHeader = "X-Session-Id";
+    /// <summary>Load tests and monitoring checks send "X-Synthetic: 1" so their events are excluded from real metrics.</summary>
+    public const string SyntheticHeader = "X-Synthetic";
     private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web);
 
     private readonly Channel<UsageEvent> _queue = Channel.CreateBounded<UsageEvent>(
@@ -22,8 +25,14 @@ public sealed class UsageTracker(TimeProvider time)
 
     public ChannelReader<UsageEvent> Reader => _queue.Reader;
 
-    public void Track(string evt, HttpContext http, object? props = null) =>
-        _queue.Writer.TryWrite(new UsageEvent(evt, SessionOf(http), JsonSerializer.Serialize(props ?? new { }, Json), time.GetUtcNow()));
+    public void Track(string evt, HttpContext http, object? props = null)
+    {
+        var json = JsonSerializer.SerializeToNode(props ?? new { }, Json) as JsonObject ?? new JsonObject();
+        if (IsSynthetic(http)) json["synthetic"] = true;
+        _queue.Writer.TryWrite(new UsageEvent(evt, SessionOf(http), json.ToJsonString(), time.GetUtcNow()));
+    }
+
+    public static bool IsSynthetic(HttpContext http) => http.Request.Headers[SyntheticHeader].ToString() == "1";
 
     public static Guid? SessionOf(HttpContext http) =>
         Guid.TryParse(http.Request.Headers[SessionHeader].ToString(), out var id) ? id : null;
