@@ -1,12 +1,12 @@
 import { useState } from "react";
 import type { Shared } from "../App";
 import { useAccount } from "../account";
-import { Chat } from "../components/Chat";
 import { Compare } from "../components/Compare";
 import { CourseCard } from "../components/CourseCard";
 import { Helpful } from "../components/Helpful";
 import { ProfileForm } from "../components/ProfileForm";
 import { WhatIf } from "../components/WhatIf";
+import { DragHandle, usePersistentState, useResizable } from "../layout";
 import { toProfile } from "../profile";
 import type { Priority } from "../types";
 
@@ -21,6 +21,8 @@ export function Explore({ form, setForm, submitted, submit, data, loading, error
   const { me, saveProfile } = useAccount();
   const [hideIneligible, setHideIneligible] = useState(true);
   const [compareIds, setCompareIds] = useState<number[]>([]);
+  const [showForm, setShowForm] = usePersistentState("compass.explore.form", true);
+  const formWidth = useResizable("compass.explore.formWidth", 320, 260, 520);
   const items = data?.items ?? [];
   const visible = hideIneligible ? items.filter((r) => r.eligibility.status !== "NotEligible") : items;
   const compared = compareIds.map((id) => items.find((r) => r.course.id === id)).filter((r) => r !== undefined);
@@ -28,14 +30,17 @@ export function Explore({ form, setForm, submitted, submit, data, loading, error
     setCompareIds((ids) => (ids.includes(id) ? ids.filter((x) => x !== id) : [...ids, id].slice(-3)));
 
   return (
-    <div className="explore">
-      <aside className="left">
+    <div className={`explore ${showForm ? "with-form" : ""}`} style={{ "--form-w": `${formWidth.size}px` } as React.CSSProperties}>
+      {showForm && <aside className="left">
         <ProfileForm value={form} onChange={setForm} onSubmit={() => { submit(); if (me) void saveProfile(toProfile(form), priority); }}
                      submitted={submitted} fx={fx} />
         {data && <WhatIf budgetLakh={form.budgetLakh} onBudget={(v) => setForm({ ...form, budgetLakh: v })} items={items} />}
-      </aside>
+        <button type="button" className="link small" onClick={() => setShowForm(false)}>Hide profile panel</button>
+      </aside>}
+      {showForm && <DragHandle label="Resize profile panel" onStart={formWidth.onStart} onDrag={(dx) => formWidth.resizeBy(dx)} onStep={formWidth.step} />}
 
       <section className="center">
+        {!showForm && <button type="button" className="secondary show-form" onClick={() => setShowForm(true)}>Show profile panel</button>}
         {!submitted && (
           <div className="panel empty">
             <h2>Your shortlist will appear here</h2>
@@ -81,9 +86,6 @@ export function Explore({ form, setForm, submitted, submit, data, loading, error
         )}
       </section>
 
-      <aside className="right">
-        <Chat profile={submitted ? toProfile(form) : null} />
-      </aside>
     </div>
   );
 }

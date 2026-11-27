@@ -14,25 +14,41 @@ export const SECTIONS: { id: Section; label: string }[] = [
   { id: "profile", label: "Profile" },
 ];
 
-export function Sidebar({ section, open, onClose }: { section: Section; open: boolean; onClose: () => void }) {
+interface Props {
+  section: Section;
+  open: boolean;
+  onClose: () => void;
+  collapsed: boolean;
+  onToggleCollapsed: () => void;
+}
+
+export function Sidebar({ section, open, onClose, collapsed, onToggleCollapsed }: Props) {
   const { me, enabled, signOut } = useAccount();
   const counts: Partial<Record<Section, number>> = me ? { saved: me.saved.length, applications: me.applications.length } : {};
 
   return (
-    <nav className={`sidebar ${open ? "open" : ""}`} aria-label="Main">
-      <a className="brand" href="#/dashboard" onClick={onClose}><Logo /> Compass</a>
+    <nav className={`sidebar ${open ? "open" : ""} ${collapsed ? "collapsed" : ""}`} aria-label="Main">
+      <div className="sidebar-top">
+        <a className="brand" href="#/dashboard" onClick={onClose}><Logo /> <span className="label">Compass</span></a>
+        <button type="button" className="icon-btn collapse-btn" onClick={onToggleCollapsed}
+                aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"} title={collapsed ? "Expand sidebar" : "Collapse sidebar"}>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+            <path d={collapsed ? "M9 6l6 6-6 6" : "M15 6l-6 6 6 6"} />
+          </svg>
+        </button>
+      </div>
       <ul>
         {SECTIONS.map((s) => (
           <li key={s.id}>
-            <a href={`#/${s.id}`} className={section === s.id ? "active" : ""} aria-current={section === s.id ? "page" : undefined} onClick={onClose}>
-              <Icon name={s.id} /> <span>{s.label}</span>
+            <a href={`#/${s.id}`} className={section === s.id ? "active" : ""} title={collapsed ? s.label : undefined} aria-current={section === s.id ? "page" : undefined} onClick={onClose}>
+              <Icon name={s.id} /> <span className="label">{s.label}</span>
               {counts[s.id] ? <em className="count">{counts[s.id]}</em> : null}
             </a>
           </li>
         ))}
       </ul>
       <div className="sidebar-foot">
-        {me ? (
+        {collapsed ? null : me ? (
           <div className="who">
             {me.user.pictureUrl
               ? <img src={me.user.pictureUrl} alt="" referrerPolicy="no-referrer" />

@@ -1,7 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useAccount } from "./account";
 import { getCourses, getExchangeRate, getRecommendations, warmup } from "./api";
+import { ChatDock } from "./components/ChatDock";
 import { Icon, Logo } from "./components/Icons";
+import { DragHandle, usePersistentState, useResizable } from "./layout";
 import type { FormState } from "./components/ProfileForm";
 import { SECTIONS, Sidebar, type Section } from "./components/Sidebar";
 import { Applications } from "./pages/Applications";
@@ -38,6 +40,8 @@ export default function App() {
   const account = useAccount();
   const [section, setSection] = useState<Section>(readSection);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [collapsed, setCollapsed] = usePersistentState("compass.sidebar.collapsed", false);
+  const sidebarWidth = useResizable("compass.sidebar.width", 248, 200, 340);
   const [form, setForm] = useState<FormState>(INITIAL_FORM);
   const [submitted, setSubmitted] = useState(false);
   const [data, setData] = useState<RecommendationResponse | null>(null);
@@ -112,7 +116,7 @@ export default function App() {
   const title = SECTIONS.find((s) => s.id === section)?.label ?? "";
 
   return (
-    <div className="shell">
+    <div className="shell" style={{ "--sidebar-w": `${collapsed ? 76 : sidebarWidth.size}px` } as React.CSSProperties}>
       <header className="mobile-bar">
         <button type="button" className="icon-btn" onClick={() => setMenuOpen(!menuOpen)} aria-label="Open menu" aria-expanded={menuOpen}>
           <Icon name="menu" />
@@ -120,7 +124,14 @@ export default function App() {
         <span className="brand"><Logo /> Compass</span>
         <span className="mobile-title">{title}</span>
       </header>
-      <Sidebar section={section} open={menuOpen} onClose={() => setMenuOpen(false)} />
+      <div className="sidebar-wrap">
+        <Sidebar section={section} open={menuOpen} onClose={() => setMenuOpen(false)}
+                 collapsed={collapsed} onToggleCollapsed={() => setCollapsed(!collapsed)} />
+        {!collapsed && (
+          <DragHandle className="sidebar-handle" label="Resize sidebar"
+                      onStart={sidebarWidth.onStart} onDrag={(dx) => sidebarWidth.resizeBy(dx)} onStep={sidebarWidth.step} />
+        )}
+      </div>
       <main className="content">
         {account.error && <div className="notice">{account.error}</div>}
         {section === "dashboard" && <Dashboard {...shared} />}
@@ -130,6 +141,7 @@ export default function App() {
         {section === "scholarships" && <Scholarships {...shared} />}
         {section === "prearrival" && <Prearrival />}
         {section === "profile" && <Profile {...shared} />}
+        <ChatDock profile={submitted ? profile : null} />
         <footer className="site-footer">
           Guests: nothing about you is stored. Signed in: Compass stores only what you choose to save, and you can download or
           delete it any time from Profile. Anonymous usage counts help improve Compass. Always confirm fees and requirements on
