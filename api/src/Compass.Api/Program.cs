@@ -38,6 +38,7 @@ builder.Services.AddHostedService<UsageWriter>();
 builder.Services.AddSingleton<EligibilityEvaluator>();
 builder.Services.AddSingleton<CostCalculator>();
 builder.Services.AddSingleton<RecommendationEngine>();
+builder.Services.AddSingleton<ScholarshipMatcher>();
 
 // AI service: short, resilient calls for scoring; a separate long-lived client for streaming
 builder.Services.AddHttpClient<AiServiceClient>(ConfigureAi)
@@ -59,6 +60,7 @@ builder.Services.AddHttpClient<ExchangeRateService>(c => c.Timeout = TimeSpan.Fr
 // Platform
 builder.Services.AddProblemDetails();
 builder.Services.AddCompassRateLimits();
+builder.Services.AddCompassAuth(config);
 builder.Services.AddCors(o => o.AddDefaultPolicy(p => p.WithOrigins(origins).AllowAnyHeader().AllowAnyMethod()));
 builder.Services.ConfigureHttpJsonOptions(o => o.SerializerOptions.Converters.Add(new JsonStringEnumConverter()));
 builder.Services.AddHealthChecks().AddCheck<DatabaseHealthCheck>("database", tags: ["ready"]);
@@ -87,6 +89,8 @@ var app = builder.Build();
 if (config.GetValue<bool>("ForwardedHeaders:Enabled")) app.UseForwardedHeaders();
 app.UseExceptionHandler();
 app.UseCors();
+app.UseAuthentication();
+app.UseAuthorization();
 app.UseRateLimiter();
 
 app.MapHealthChecks("/health/live", new HealthCheckOptions { Predicate = _ => false });
@@ -95,5 +99,7 @@ app.MapRecommendationEndpoints();
 app.MapChatEndpoints();
 app.MapFeedbackEndpoints();
 app.MapUsageEndpoints();
+app.MapAccountEndpoints();
+app.MapScholarshipEndpoints();
 
 app.Run();

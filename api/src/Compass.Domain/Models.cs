@@ -36,4 +36,11 @@ public sealed record Course(
     decimal? MinToeflNew = null,
     bool BackgroundsOpen = false,
     string? EntrySourceUrl = null,
-    string? GradeSourceUrl = null);
+    string? GradeSourceUrl = null)
+{
+    /// <summary>Published league-table positions for the course's university (information, plus the optional Reputation priority).</summary>
+    public IReadOnlyList<UniversityRank> Rankings { get; init; } = [];
+}
+
+/// <summary>A university's position in one league table. RankLow orders bands: "201-250" has RankLow 201.</summary>
+public sealed record UniversityRank(string Source, int Edition, string RankText, int RankLow, string SourceUrl);

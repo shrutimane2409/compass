@@ -7,7 +7,8 @@ public sealed record CatalogSnapshot(
     IReadOnlyList<Course> Courses,
     IReadOnlyDictionary<string, decimal> MonthlyLivingByCity,
     decimal OneOffEur,
-    DateTimeOffset LoadedAt);
+    DateTimeOffset LoadedAt,
+    IReadOnlyList<Scholarship> Scholarships);
 
 /// <summary>
 /// The catalog is small (tens of courses) and read on every request, so it lives in memory.
@@ -32,7 +33,8 @@ public sealed class CourseCatalog(CourseRepository repo, IMemoryCache cache, Tim
             var courses = await repo.GetCoursesAsync(ct);
             var living = await repo.GetMonthlyLivingByCityAsync(ct);
             var oneOff = await repo.GetOneOffTotalAsync(Country, ct);
-            var snapshot = new CatalogSnapshot(courses, living, oneOff, time.GetUtcNow());
+            var scholarships = await repo.GetScholarshipsAsync(ct);
+            var snapshot = new CatalogSnapshot(courses, living, oneOff, time.GetUtcNow(), scholarships);
 
             cache.Set(Key, snapshot, Ttl);
             return snapshot;

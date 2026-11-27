@@ -110,11 +110,18 @@ public sealed class RecommendationEngine(EligibilityEvaluator eligibility, CostC
         }
         if (c.IsEstimate) tags.Add(Tag.Estimate);
 
+        var headline = Scoring.HeadlineRank(c.Rankings);
+        if (weights.Reputation > 0)
+            reasons.Add(headline is null
+                ? "The university isn't in the QS or THE world rankings."
+                : $"Ranked {headline.RankText} in the {headline.Source} World University Rankings {headline.Edition}.");
+
         var breakdown = Scoring.Score(
             fit,
             Scoring.AffordabilityScore(afford, cost.Total, s.BudgetEur),
             Scoring.EligibilityScore(elig.Status),
-            weights);
+            weights,
+            Scoring.ReputationScore(c.Rankings));
 
         return new Recommendation(c, elig, cost, afford, fit, breakdown.Total, breakdown, tags, reasons);
     }
