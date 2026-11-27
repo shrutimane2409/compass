@@ -72,16 +72,3 @@ CREATE TABLE documents (
     UNIQUE (source_url, chunk_index)
 );
 CREATE INDEX documents_embedding_idx ON documents USING hnsw (embedding vector_cosine_ops);
-
-CREATE TABLE students (
-    id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    created_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
-    profile     JSONB NOT NULL
-);
-
-CREATE TABLE shortlist_items (
-    student_id  UUID NOT NULL REFERENCES students(id) ON DELETE CASCADE,
-    course_id   INT  NOT NULL REFERENCES courses(id),
-    added_at    TIMESTAMPTZ NOT NULL DEFAULT now(),
-    PRIMARY KEY (student_id, course_id)
-);
