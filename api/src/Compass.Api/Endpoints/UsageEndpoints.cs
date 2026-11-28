@@ -44,8 +44,9 @@ public static class UsageEndpoints
         {
             var key = config["Admin:Key"];
             if (string.IsNullOrEmpty(key)) return Results.NotFound();
-            var given = Encoding.UTF8.GetBytes(http.Request.Headers["X-Admin-Key"].ToString());
-            if (!CryptographicOperations.FixedTimeEquals(given, Encoding.UTF8.GetBytes(key))) return Results.Unauthorized();
+            // Compare hashes so neither the content nor the length of the key leaks through timing.
+            var given = SHA256.HashData(Encoding.UTF8.GetBytes(http.Request.Headers["X-Admin-Key"].ToString()));
+            if (!CryptographicOperations.FixedTimeEquals(given, SHA256.HashData(Encoding.UTF8.GetBytes(key)))) return Results.Unauthorized();
 
             // Real traffic only: events sent with X-Synthetic: 1 (load tests) are counted separately.
             const string sql = """

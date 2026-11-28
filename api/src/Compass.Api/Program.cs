@@ -103,3 +103,6 @@ app.MapAccountEndpoints();
 app.MapScholarshipEndpoints();
 
 app.Run();
+
+/// <summary>Exposed so integration tests can host the API in memory.</summary>
+public partial class Program;

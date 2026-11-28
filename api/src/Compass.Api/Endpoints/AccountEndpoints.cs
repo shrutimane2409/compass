@@ -188,7 +188,7 @@ public static partial class AccountEndpoints
         public DateTime UpdatedAt { get; set; }
     }
 
-    /// <summary>Runs a statement for the signed-in user (@u). Unknown course ids come back as 400, not 500.</summary>
+    /// <summary>Runs a statement for the signed-in user (@u). Unknown course ids come back as 400 and deleted accounts as 401, not 500.</summary>
     private static async Task<IResult> Exec(NpgsqlDataSource db, HttpContext http, string sql, object? args, CancellationToken ct)
     {
         if (AuthService.UserId(http.User) is not { } u) return Results.Unauthorized();
@@ -199,6 +199,11 @@ public static partial class AccountEndpoints
             await using var conn = await db.OpenConnectionAsync(ct);
             await conn.ExecuteAsync(new CommandDefinition(sql, p, cancellationToken: ct));
             return Results.NoContent();
+        }
+        catch (PostgresException ex) when (ex.SqlState == PostgresErrorCodes.ForeignKeyViolation
+                                           && ex.ConstraintName?.EndsWith("user_id_fkey") == true)
+        {
+            return Results.Unauthorized(); // token for a deleted account: the client signs out
         }
         catch (PostgresException ex) when (ex.SqlState == PostgresErrorCodes.ForeignKeyViolation)
         {
