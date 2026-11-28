@@ -90,9 +90,18 @@ DELETE FROM usage_events WHERE (props->>'synthetic')::boolean;
 | `prod-eval.yml`       | nightly 02:43 UTC            | a golden-profile invariant breaks in prod     |
 | `feedback-triage.yml` | every 6 h                    | an issue can't be created                     |
 | `refresh-sources.yml` | Mondays 04:17 UTC            | ingestion fails                               |
+| `data-freshness.yml`  | daily 05:23 UTC              | never; findings go to the `data-freshness` issue |
 
 GitHub emails the repo owner when a scheduled run fails. Render's free tier gives 750 instance hours a month per
 workspace; the uptime schedule uses about 430 for the API.
+
+## Data freshness
+
+`python -m scripts.freshness` (from `ai/`) audits `data/`: facts verified more than 180 days ago (the API's
+"Check dates" window) and broken source links are **errors**; fee years behind the upcoming intake, older ranking
+editions and sites that block bots are **warnings**. The daily workflow keeps one open issue labelled
+`data-freshness` up to date and closes it once there are no errors. Fix by re-checking the official page, updating
+the CSV value and `verified_at`, and reloading with the matching `scripts.load_*`. Use `--no-links` for an offline run.
 
 ## Rankings and scholarships
 

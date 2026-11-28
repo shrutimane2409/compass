@@ -1,0 +1,27 @@
+name: Data freshness
+
+# Daily: stale facts, old fee years and ranking editions, and broken source links in data/.
+# Findings go to one GitHub issue (label data-freshness), which closes itself once everything is fresh.
+on:
+  schedule:
+    - cron: "23 5 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults: { run: { working-directory: ai } }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12" }
+      - run: pip install "httpx==0.28.1"
+      - env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: python -m scripts.freshness --issue
