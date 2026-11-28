@@ -155,6 +155,11 @@ class TestMetamorphic:
         b["items"][0]["cost"]["total"] += 1
         assert same_decisions(a, b)
 
+    def test_boundary_grades_are_exact_decimals(self):
+        grades = [p["gradePercent"] for p in grade_boundary_profiles(P, [course(minGradePercent=64.6)])]
+        assert grades == [61.1, 61.6, 64.6]
+        assert expected_grade(64.6 - 3, course(minGradePercent=64.6)) == "Borderline"
+
     def test_boundary_profiles_straddle_each_minimum(self):
         grades = [p["gradePercent"] for p in grade_boundary_profiles(P, [course(), course(id=2, minGradePercent=None)])]
         assert grades == [56.5, 57.0, 60.0]

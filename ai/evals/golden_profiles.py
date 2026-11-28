@@ -86,9 +86,10 @@ def expected_grade(grade: float, course: dict) -> str:
     m = course.get("minGradePercent")
     if m is None:
         return "NotPublished"
-    if grade >= m:
+    # The API compares decimals; round so float noise (64.6 - 3 = 61.599999...) can't flip a boundary.
+    if round(grade - m, 6) >= 0:
         return "Met"
-    return "Borderline" if grade >= m - BORDERLINE_MARGIN else "NotMet"
+    return "Borderline" if round(grade - (m - BORDERLINE_MARGIN), 6) >= 0 else "NotMet"
 
 
 def expected_background(background: str, course: dict) -> str:
@@ -233,7 +234,7 @@ def grade_boundary_profiles(base: dict, courses: list[dict]) -> list[dict]:
     """For each published minimum m: exactly m (Met), m - margin (Borderline), just below that (NotMet)."""
     grades = set()
     for m in {c["minGradePercent"] for c in courses if c.get("minGradePercent") is not None}:
-        grades |= {m, m - BORDERLINE_MARGIN, round(m - BORDERLINE_MARGIN - 0.5, 1)}
+        grades |= {round(m, 1), round(m - BORDERLINE_MARGIN, 1), round(m - BORDERLINE_MARGIN - 0.5, 1)}
     return [{**base, "gradePercent": g} for g in sorted(grades) if 0 <= g <= 100]
 
 
