@@ -173,7 +173,7 @@ def audit(data_dir: Path, today: date, links: bool) -> tuple[Report, int]:
         check_rows(name, read(data_dir / name), today, report)
     urls = source_urls(data_dir)
     if links:
-        headers = {"User-Agent": USER_AGENT, "Accept": "text/html,application/xhtml+xml"}
+        headers = {"User-Agent": USER_AGENT, "Accept": "text/html,application/xhtml+xml,application/pdf,*/*;q=0.8"}
         with httpx.Client(headers=headers, timeout=20, follow_redirects=True) as client:
             check_links(urls, report, client, snapshotted_urls(data_dir))
     return report, len(urls) if links else 0
